@@ -1,4 +1,4 @@
-import { validateConfig, type ValidatedRaspConfig } from "./config.js";
+import { validateConfig, COLLECTOR_URL, type ValidatedRaspConfig } from "./config.js";
 import type {
   RaspConfig,
   NormalizedRequest,
@@ -32,7 +32,7 @@ export class RaspAgent {
       : null;
 
     this.client = new TransportClient({
-      collectorUrl: this.cfg.collectorUrl,
+      collectorUrl: COLLECTOR_URL,
       apiKey: this.cfg.apiKey,
       timeoutMs: this.cfg.transportTimeoutMs,
     });

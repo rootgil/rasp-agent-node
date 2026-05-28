@@ -3,8 +3,6 @@ export type AgentMode = "monitor" | "block";
 export type AgentStatus = "healthy" | "degraded" | "error";
 
 export interface RaspConfig {
-  /** Collector URL e.g. https://collector.example.com */
-  collectorUrl: string;
   /** Bearer API key issued by the RASP dashboard */
   apiKey: string;
   /** Project ID from the RASP dashboard */

@@ -1,8 +1,9 @@
 import { z } from "zod";
 import type { RaspConfig } from "./types.js";
 
+export const COLLECTOR_URL = "https://collector.rasp.dev";
+
 const RaspConfigSchema = z.object({
-  collectorUrl: z.string().url("collectorUrl must be a valid URL"),
   apiKey: z.string().min(1, "apiKey is required"),
   projectId: z.string().min(1, "projectId is required"),
   agentId: z.string().min(1, "agentId is required"),
