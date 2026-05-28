@@ -1,3 +1,17 @@
+/**
+ * Path traversal signature detector.
+ *
+ * Scans `query`, `body` and `path` for `../` and `..\` sequences, their
+ * URL-encoded (`%2e%2e%2f`) and double-encoded (`%252e%252e`) variants,
+ * NUL-byte truncation, and references to canonical loot files
+ * (`/etc/passwd`, `/etc/shadow`, `win.ini`, `boot.ini`).
+ *
+ * Severity: `high`.
+ *
+ * Implementation note: each value is also tried after a single pass of
+ * `decodeURIComponent` to catch the simplest encoding bypasses without
+ * paying for a full normalisation pipeline.
+ */
 import type { Detector } from "./base.js";
 import { flattenValues } from "./base.js";
 import type { DetectionResult, NormalizedRequest } from "../types.js";
@@ -46,6 +60,10 @@ export class PathTraversalDetector implements Detector {
   }
 }
 
+/**
+ * Best-effort `decodeURIComponent`. Falls back to the original string when
+ * the input contains malformed percent-escapes.
+ */
 function tryDecode(val: string): string {
   try {
     return decodeURIComponent(val);

@@ -1,8 +1,24 @@
+/**
+ * NoSQL (primarily MongoDB) injection signature detector.
+ *
+ * Two complementary strategies:
+ *
+ * 1. **Value scan** — string values are checked for serialised MongoDB
+ *    operator forms (`$where:`, `{ $gt: ... }`, `mapReduce(...)`). Catches
+ *    payloads injected through query strings or JSON bodies that the
+ *    application later passes through unsafe deserialisation.
+ *
+ * 2. **Key scan** — any leaf object key matching `^$[a-z]+$` is flagged.
+ *    This is the classic `{ password: { $gt: "" } }` attack where the
+ *    operator is smuggled in as a sub-object instead of a scalar.
+ *
+ * Severity: `high`.
+ */
 import type { Detector } from "./base.js";
 import { flattenEntries, flattenValues } from "./base.js";
 import type { DetectionResult, NormalizedRequest } from "../types.js";
 
-/** MongoDB operator patterns injected as string values */
+/** MongoDB operator patterns expected to appear in string values. */
 const NOSQL_STRING_PATTERNS = [
   /\$where\s*:/i,
   /\$regex\s*:/i,
@@ -18,14 +34,13 @@ const NOSQL_STRING_PATTERNS = [
   /mapReduce\s*\(/i,
 ];
 
-/** MongoDB operators injected as object keys */
+/** MongoDB operators showing up as object keys (e.g. `{ "$gt": "" }`). */
 const NOSQL_KEY_PATTERN = /^\$[a-z]+$/i;
 
 export class NoSqlInjectionDetector implements Detector {
   readonly name = "nosql-injection";
 
   detect(req: NormalizedRequest): DetectionResult | null {
-    // Check string values for serialised operator patterns
     const values = [...flattenValues(req.query), ...flattenValues(req.body)];
     for (const val of values) {
       for (const pattern of NOSQL_STRING_PATTERNS) {
@@ -42,7 +57,6 @@ export class NoSqlInjectionDetector implements Detector {
       }
     }
 
-    // Check object keys for $ operators (e.g. body: { password: { $gt: "" } })
     const entries = [...flattenEntries(req.query), ...flattenEntries(req.body)];
     for (const [key] of entries) {
       const leaf = key.split(".").pop() ?? "";

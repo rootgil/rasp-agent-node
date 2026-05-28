@@ -1,27 +1,44 @@
+/**
+ * Broken Object Level Authorization (BOLA / IDOR) detector.
+ *
+ * OWASP API Security Top-10 #1. Two complementary heuristics:
+ *
+ * 1. **JWT-sub mismatch** — if the `Authorization: Bearer …` header carries
+ *    a JWT whose `sub` claim does not match the resource ID present in the
+ *    URL path, the request is flagged. This catches user A trying to read
+ *    user B's resource by directly tampering with the URL.
+ *
+ * 2. **High-velocity ID enumeration** — per source IP, the detector tracks
+ *    distinct resource IDs seen in the path over a rolling
+ *    {@link WINDOW_MS} window. More than {@link DISTINCT_ID_THRESHOLD}
+ *    distinct IDs in that window triggers an alert: behaviour consistent
+ *    with a scripted scrape.
+ *
+ * Both heuristics rely on the path containing a recognisable object ID —
+ * the detector looks for short numeric segments or RFC 4122 UUIDs.
+ *
+ * Severity: `high`.
+ *
+ * State note: per-IP windows are stored in memory; {@link prune} drops
+ * entries older than `2 * WINDOW_MS` and should be called periodically by
+ * the host process to bound memory.
+ */
 import type { Detector } from "./base.js";
 import type { DetectionResult, NormalizedRequest } from "../types.js";
-
-/**
- * BOLA / IDOR detector — OWASP API Security Top 1.
- *
- * Heuristics (stateless + lightweight stateful):
- * 1. ID enumeration probe: sequential integer IDs in the URL path.
- * 2. JWT sub vs path ID mismatch: if a JWT is present and the user ID in
- *    the path differs from the `sub` claim, flag as suspicious.
- * 3. High-velocity ID variation: tracks distinct resource IDs accessed per
- *    source IP within a rolling window and flags rapid enumeration.
- */
 
 interface IpState {
   ids: Set<string>;
   windowStart: number;
 }
 
+/** Rolling window length used by the enumeration heuristic, in ms. */
 const WINDOW_MS = 60_000;
+/** Distinct-ID count above which an IP is treated as enumerating. */
 const DISTINCT_ID_THRESHOLD = 20;
 
-// Path segments that look like numeric or UUID object IDs
+/** Short numeric IDs (typical `GET /users/42` style). */
 const NUMERIC_ID_RE = /^\d{1,12}$/;
+/** Canonical RFC 4122 UUID, case-insensitive. */
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 export class BolaDetector implements Detector {
@@ -32,7 +49,6 @@ export class BolaDetector implements Detector {
   detect(req: NormalizedRequest): DetectionResult | null {
     const pathId = extractPathId(req.path);
 
-    // 1. JWT sub vs path ID mismatch
     const jwtSub = extractJwtSub(req.headers["authorization"]);
     if (jwtSub && pathId && pathId !== jwtSub) {
       return {
@@ -45,7 +61,6 @@ export class BolaDetector implements Detector {
       };
     }
 
-    // 2. High-velocity ID enumeration per source IP
     if (pathId && req.sourceIp) {
       const result = this.trackIpId(req.sourceIp, pathId);
       if (result) return result;
@@ -54,6 +69,10 @@ export class BolaDetector implements Detector {
     return null;
   }
 
+  /**
+   * Record an `(ip, id)` observation and flag the IP when too many distinct
+   * IDs have been seen within {@link WINDOW_MS}.
+   */
   private trackIpId(sourceIp: string, id: string): DetectionResult | null {
     const now = Date.now();
     let state = this.ipState.get(sourceIp);
@@ -78,7 +97,13 @@ export class BolaDetector implements Detector {
     return null;
   }
 
-  /** Prune stale IP entries to prevent unbounded memory growth. */
+  /**
+   * Drop per-IP state older than `2 * WINDOW_MS`.
+   *
+   * Safe to call at any time; the host process should invoke this on a
+   * timer (e.g. once a minute) to prevent unbounded memory growth on
+   * long-lived processes.
+   */
   prune(): void {
     const cutoff = Date.now() - WINDOW_MS * 2;
     for (const [ip, state] of this.ipState) {
@@ -89,6 +114,10 @@ export class BolaDetector implements Detector {
   }
 }
 
+/**
+ * Return the first path segment that looks like a resource ID, or `null` if
+ * no segment matches.
+ */
 function extractPathId(path: string): string | null {
   const segments = path.split("/").filter(Boolean);
   for (const seg of segments) {
@@ -99,6 +128,14 @@ function extractPathId(path: string): string | null {
   return null;
 }
 
+/**
+ * Decode the `sub` claim of a `Bearer <jwt>` header **without verifying the
+ * signature**.
+ *
+ * This is acceptable here because the value is only used as a heuristic
+ * cross-check (BOLA), never for authentication decisions. Returns `null`
+ * for any malformed input.
+ */
 function extractJwtSub(authHeader: string | string[] | undefined): string | null {
   const header = Array.isArray(authHeader) ? authHeader[0] : authHeader;
   if (!header?.startsWith("Bearer ")) return null;

@@ -1,19 +1,43 @@
+/**
+ * NestJS integration.
+ *
+ * Exposes {@link createNestMiddleware}, a factory that returns a NestJS
+ * middleware **class** bound to a {@link RaspAgent} instance.
+ *
+ * Behaviour matches the Express adapter (Nest's middleware contract is
+ * Express-compatible by default):
+ *  - The request is normalised and inspected.
+ *  - `monitor` mode lets the request continue.
+ *  - `block` mode replies `403 { error, eventType }` and skips the next
+ *    handler.
+ *  - Any thrown error is swallowed (fail-open).
+ *
+ * @example
+ * ```ts
+ * import { MiddlewareConsumer, Module, NestModule } from "@nestjs/common";
+ * import { RaspAgent, createNestMiddleware } from "@rasp/agent-node";
+ *
+ * const agent = new RaspAgent({ apiKey, projectId, agentId });
+ * agent.start();
+ *
+ * @Module({})
+ * export class AppModule implements NestModule {
+ *   configure(consumer: MiddlewareConsumer) {
+ *     consumer.apply(createNestMiddleware(agent)).forRoutes("*");
+ *   }
+ * }
+ * ```
+ */
 import type { NestMiddleware } from "@nestjs/common";
 import type { Request, Response, NextFunction } from "express";
 import type { RaspAgent } from "../agent.js";
 import type { NormalizedRequest } from "../types.js";
 
 /**
- * NestJS middleware class factory.
- * Inject or instantiate RaspAgent and pass it to the factory.
+ * Build a Nest middleware class bound to a {@link RaspAgent}.
  *
- * Usage in AppModule:
- *
- *   export class AppModule implements NestModule {
- *     configure(consumer: MiddlewareConsumer) {
- *       consumer.apply(createNestMiddleware(agent)).forRoutes('*');
- *     }
- *   }
+ * A class is returned (rather than an instance) because Nest itself
+ * instantiates middlewares from its DI container.
  */
 export function createNestMiddleware(agent: RaspAgent): new () => NestMiddleware {
   class RaspNestMiddleware implements NestMiddleware {
@@ -38,7 +62,7 @@ export function createNestMiddleware(agent: RaspAgent): new () => NestMiddleware
           return;
         }
       } catch {
-        // Fail open.
+        // Fail-open — see file-level note.
       }
       next();
     }
@@ -47,6 +71,10 @@ export function createNestMiddleware(agent: RaspAgent): new () => NestMiddleware
   return RaspNestMiddleware;
 }
 
+/**
+ * Best-effort source IP resolution; see the Express integration for the
+ * trust caveat.
+ */
 function extractSourceIp(req: Request): string | undefined {
   const forwarded = req.headers["x-forwarded-for"];
   if (typeof forwarded === "string") return forwarded.split(",")[0]?.trim();

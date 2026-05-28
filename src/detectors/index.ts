@@ -1,3 +1,10 @@
+/**
+ * Default detector set bundled with the agent.
+ *
+ * Order matters: {@link RaspAgent.inspect} returns on the first non-null
+ * detection, so detectors with higher signal/lower false-positive rates and
+ * higher severity come first.
+ */
 import type { Detector } from "./base.js";
 import { SqlInjectionDetector } from "./sql-injection.js";
 import { XssDetector } from "./xss.js";
@@ -12,6 +19,12 @@ import { BolaDetector } from "./bola.js";
 
 export { type Detector } from "./base.js";
 
+/**
+ * Build a fresh array of the bundled detectors.
+ *
+ * Each call returns brand-new detector instances — important because a few
+ * detectors (notably {@link BolaDetector}) carry per-IP state.
+ */
 export function createDefaultDetectors(): Detector[] {
   return [
     new SqlInjectionDetector(),

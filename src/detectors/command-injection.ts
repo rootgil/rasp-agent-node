@@ -1,3 +1,18 @@
+/**
+ * OS command injection signature detector.
+ *
+ * Scans `query`, `body` and `path` for shell metacharacters chained with
+ * common reconnaissance binaries (`ls`, `cat`, `id`, `whoami`, `curl`,
+ * `wget`, `nc`, …), `$(…)` / backtick command substitution, pipes into
+ * shells, redirection into `/dev/tcp`, references to `/etc/passwd` and
+ * `/proc/self`, and the language-level eval gadgets (`exec()`, `eval()`,
+ * `system()`, `popen()`).
+ *
+ * Severity: `critical` — successful OS command injection is full RCE.
+ *
+ * Known limits: pattern-based; obfuscation via env-var assembly (`a=ls;$a`)
+ * or base64 piped into `sh` may evade signatures.
+ */
 import type { Detector } from "./base.js";
 import { flattenValues } from "./base.js";
 import type { DetectionResult, NormalizedRequest } from "../types.js";

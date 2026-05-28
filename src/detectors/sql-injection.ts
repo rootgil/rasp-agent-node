@@ -1,3 +1,18 @@
+/**
+ * SQL injection signature detector.
+ *
+ * Inspects the request `query`, `body` and `path` for textbook SQLi patterns:
+ * UNION SELECT, tautology probes (`' OR 1=1`), inline comments, stacked
+ * statements with destructive verbs, blind-injection sleep functions and
+ * SQL Server metadata views.
+ *
+ * Severity: `critical` — SQLi typically yields direct data exfiltration.
+ *
+ * Known limits: pattern-based; an attacker who heavily obfuscates the
+ * payload (case mixing, comments between keywords) may evade some signatures.
+ * Headers are intentionally **not** scanned to keep cost down — they're
+ * covered by other detectors.
+ */
 import type { Detector, } from "./base.js";
 import { flattenValues } from "./base.js";
 import type { DetectionResult, NormalizedRequest } from "../types.js";

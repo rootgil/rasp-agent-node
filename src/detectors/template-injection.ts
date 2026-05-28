@@ -1,22 +1,35 @@
+/**
+ * Server-Side Template Injection (SSTI) signature detector.
+ *
+ * Looks for the canonical delimiter shapes of popular server-side template
+ * engines:
+ *  - `{{ … }}` / `{% … %}` — Twig, Jinja2, Nunjucks, Pebble.
+ *  - `<% … %>` — ERB, EJS.
+ *  - `{{{ … }}}` — Handlebars triple-stache.
+ *  - `${ … }` — Thymeleaf (and JSP EL).
+ *  - `#{ … }` — Velocity.
+ *  - `<#… >` — Freemarker.
+ *
+ * Also matches the classic `7*7` math probe in each delimiter style — a
+ * cheap, very high-signal indicator.
+ *
+ * Severity: `high`.
+ *
+ * Known limits: applications that legitimately echo back template-like
+ * strings (CMS editors, code paste forms) may produce false positives.
+ */
 import type { Detector } from "./base.js";
 import { flattenValues } from "./base.js";
 import type { DetectionResult, NormalizedRequest } from "../types.js";
 
 const SSTI_PATTERNS = [
-  // Twig / Jinja2 / Nunjucks / Pebble
   /\{\{.*\}\}/s,
   /\{%.*%\}/s,
-  // ERB / EJS
   /<%[=\-]?.*%>/s,
-  // Handlebars triple-stache
   /\{\{\{.*\}\}\}/s,
-  // Thymeleaf
   /\$\{.*\}/s,
-  // Velocity
   /#\{.*\}/s,
-  // Freemarker
   /<#.*>/s,
-  // Common math-eval probes
   /\$\{7\s*\*\s*7\}/,
   /\{\{7\s*\*\s*7\}\}/,
   /<%=\s*7\s*\*\s*7\s*%>/,

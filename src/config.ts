@@ -1,8 +1,33 @@
+/**
+ * Runtime configuration validation for the RASP agent.
+ *
+ * Wraps user-supplied {@link RaspConfig} in a Zod schema that:
+ *  - enforces required fields (`apiKey`, `projectId`, `agentId`),
+ *  - applies safe defaults for everything else,
+ *  - rejects degenerate values (e.g. 0 ms intervals).
+ *
+ * {@link validateConfig} is the only sanctioned way to produce a
+ * {@link ValidatedRaspConfig} — every other module relies on the post-parse
+ * defaults being present.
+ */
 import { z } from "zod";
 import type { RaspConfig } from "./types.js";
 
+/**
+ * Hard-coded collector base URL.
+ *
+ * Per `AGENTS.md` "Security Rules", the agent must not perform arbitrary
+ * outbound network calls — only this endpoint is allowed.
+ */
 export const COLLECTOR_URL = "https://collector.rasp.dev";
 
+/**
+ * Zod schema mirroring {@link RaspConfig}.
+ *
+ * Each default here matches the documented behaviour in `types.ts` and the
+ * lower bounds protect against pathological values (e.g. a 100 ms heartbeat
+ * that would DOS the collector).
+ */
 const RaspConfigSchema = z.object({
   apiKey: z.string().min(1, "apiKey is required"),
   projectId: z.string().min(1, "projectId is required"),
@@ -18,10 +43,25 @@ const RaspConfigSchema = z.object({
   auditLogMaxBytes: z.number().int().min(1).default(10 * 1024 * 1024),
   framework: z.string().optional(),
   runtime: z.string().default("node"),
+  discoveryFlushIntervalMs: z.number().int().min(5_000).default(60_000),
 });
 
+/**
+ * Fully resolved configuration with all defaults applied.
+ *
+ * Internal modules (`agent.ts`, `transport/*`, `redaction/*`) accept this
+ * stricter type rather than the user-facing optional-heavy {@link RaspConfig}.
+ */
 export type ValidatedRaspConfig = z.infer<typeof RaspConfigSchema>;
 
+/**
+ * Validate a raw user config and return a fully resolved one.
+ *
+ * @param raw - The configuration object passed to `new RaspAgent(...)`.
+ * @returns The same configuration with all defaults applied.
+ * @throws {Error} If validation fails. The error message has the form
+ *   `[rasp-agent] Invalid configuration — field1: msg1; field2: msg2`.
+ */
 export function validateConfig(raw: RaspConfig): ValidatedRaspConfig {
   const result = RaspConfigSchema.safeParse(raw);
   if (!result.success) {

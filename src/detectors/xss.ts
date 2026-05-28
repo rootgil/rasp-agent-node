@@ -1,3 +1,18 @@
+/**
+ * Cross-Site Scripting (XSS) signature detector.
+ *
+ * Scans `query` and `body` values for the most common reflected/stored XSS
+ * payload shapes: `<script>`, `javascript:` URLs, inline event handlers,
+ * `<iframe>`, `<svg onload=…>`, IE `expression(…)`, and the canonical
+ * `<img src=x onerror=…>` probe.
+ *
+ * Severity: `high`.
+ *
+ * Known limits: signature-based, no HTML parser — an attacker who breaks the
+ * payload across multiple parameters or uses very unusual encoding may evade
+ * detection. The request `path` is not scanned to limit false positives on
+ * legitimate URLs containing the substring `script`.
+ */
 import type { Detector } from "./base.js";
 import { flattenValues } from "./base.js";
 import type { DetectionResult, NormalizedRequest } from "../types.js";

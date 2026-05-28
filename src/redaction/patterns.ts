@@ -1,20 +1,42 @@
+/**
+ * Default redaction patterns applied to every outbound event.
+ *
+ * The {@link RedactionEngine} walks each value object and replaces any field
+ * whose **key** matches one of these regexes with `[REDACTED]`. Matching is
+ * key-based (not value-based) so we never have to look at the secret itself —
+ * which keeps the engine cheap and prevents accidental leakage through
+ * logging.
+ *
+ * The set covers three families:
+ *  - Common auth/credential field names (`password`, `secret`, `token`,
+ *    `*_key`, `*_secret`, `authorization`, `cookie`).
+ *  - Frequent PII (`ssn`, `credit_card`, `card_number`, `cvv`, `pin`).
+ *  - Conventional API-key headers (`x-api-key`, `x-auth-token`,
+ *    `x-access-token`).
+ *
+ * Customers can extend the set by passing extra patterns to
+ * `new RedactionEngine(extra)`.
+ */
+
+/**
+ * Declarative redaction rule.
+ *
+ * The engine currently only consults {@link RedactionPattern.matchKey};
+ * `replacement` is reserved for future extensions where rules might want to
+ * substitute different sentinels (e.g. `[EMAIL]`, `[CARD-LAST4-…]`).
+ */
 export interface RedactionPattern {
-  /** Human-readable name for the audit log */
+  /** Human-readable name surfaced in the audit log. */
   name: string;
   /**
-   * Either a RegExp tested against field names (keys),
-   * or a function that also inspects the value.
+   * Regex tested case-insensitively against the **field name** (object key).
+   * The engine never inspects the field value.
    */
   matchKey: RegExp;
-  /** Replacement string (default "[REDACTED]") */
+  /** Replacement string (default `[REDACTED]`). Reserved for future use. */
   replacement?: string;
 }
 
-/**
- * Default redaction patterns applied to all outbound telemetry.
- * Keys are matched case-insensitively against field names found anywhere
- * in the event object (headers, body, query, metadata…).
- */
 export const DEFAULT_REDACTION_PATTERNS: RedactionPattern[] = [
   { name: "authorization", matchKey: /^authorization$/i },
   { name: "cookie", matchKey: /^cookie$/i },

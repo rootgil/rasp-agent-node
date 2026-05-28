@@ -1,15 +1,36 @@
+/**
+ * Fastify integration.
+ *
+ * Exposes {@link createFastifyPlugin}, a factory that returns a Fastify
+ * plugin attaching an `onRequest` hook bound to a {@link RaspAgent}.
+ *
+ * Behaviour mirrors the Express integration:
+ *  - The request is normalised and inspected.
+ *  - `monitor` mode lets the request continue regardless of the result.
+ *  - `block` mode replies `403 { error, eventType }` and short-circuits
+ *    the route handler.
+ *  - Any thrown error is swallowed (fail-open).
+ *
+ * @example
+ * ```ts
+ * import Fastify from "fastify";
+ * import { RaspAgent, createFastifyPlugin } from "@rasp/agent-node";
+ *
+ * const agent = new RaspAgent({ apiKey, projectId, agentId });
+ * agent.start();
+ *
+ * const fastify = Fastify();
+ * await fastify.register(createFastifyPlugin(agent));
+ * ```
+ *
+ * @remarks The hook fires at `onRequest`, before body parsing. If body
+ * inspection is required, switch the hook to `preHandler` in this file or
+ * register a separate hook downstream.
+ */
 import type { FastifyInstance, FastifyRequest, FastifyReply } from "fastify";
 import type { RaspAgent } from "../agent.js";
 import type { NormalizedRequest } from "../types.js";
 
-/**
- * Registers a Fastify plugin that inspects every incoming request.
- * In "block" mode, detected threats receive a 403 reply.
- * In "monitor" mode (default), the request passes through regardless.
- *
- * Usage:
- *   await fastify.register(createFastifyPlugin(agent))
- */
 export function createFastifyPlugin(agent: RaspAgent) {
   return async function raspPlugin(fastify: FastifyInstance): Promise<void> {
     fastify.addHook(
@@ -34,13 +55,17 @@ export function createFastifyPlugin(agent: RaspAgent) {
             });
           }
         } catch {
-          // Fail open.
+          // Fail-open — see file-level note.
         }
       }
     );
   };
 }
 
+/**
+ * Best-effort source IP resolution; see the Express integration for the
+ * trust caveat.
+ */
 function extractSourceIp(req: FastifyRequest): string | undefined {
   const forwarded = req.headers["x-forwarded-for"];
   if (typeof forwarded === "string") return forwarded.split(",")[0]?.trim();
