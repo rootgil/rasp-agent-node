@@ -241,8 +241,12 @@ export interface RedactionAuditEntry {
   ts: string;
   agentId: string;
   projectId: string;
-  /** Event type that triggered redaction. */
+  /** Event type that triggered the detection. */
   eventType: string;
+  /** Severity of the detection. */
+  severity?: string;
+  /** Name of the detector that fired. */
+  detectorName?: string;
   /** Dotted field paths that were replaced by `[REDACTED]`. */
   redactedFields: string[];
   /** True when the event was dropped (e.g. because redaction failed). */

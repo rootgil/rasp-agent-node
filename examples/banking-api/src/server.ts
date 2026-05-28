@@ -89,7 +89,7 @@ const server = app.listen(PORT, HOST, () => {
   console.log(`     Collector : ${process.env["RASP_COLLECTOR_URL"] ?? "https://collector.rasp.dev"}`);
   console.log(`     Audit log : ${agent.cfg.auditLogPath}`);
   console.log("");
-  console.log('     Open http://127.0.0.1:3000 in your browser to start testing.');
+  console.log(`     Open http://${HOST}:${PORT} in your browser to start testing.`);
   console.log("");
 });
 

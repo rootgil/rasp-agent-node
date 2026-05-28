@@ -221,16 +221,16 @@ export class RaspAgent {
 
     const auditLoggedLocally = redactedFields.length > 0;
 
-    if (auditLoggedLocally) {
-      this.auditLog?.write({
-        ts: new Date().toISOString(),
-        agentId: this.cfg.agentId,
-        projectId: this.cfg.projectId,
-        eventType: detection.eventType,
-        redactedFields,
-        dropped: false,
-      });
-    }
+    this.auditLog?.write({
+      ts: new Date().toISOString(),
+      agentId: this.cfg.agentId,
+      projectId: this.cfg.projectId,
+      eventType: detection.eventType,
+      severity: detection.severity,
+      detectorName: detection.detectorName,
+      redactedFields,
+      dropped: false,
+    });
 
     const event = redacted as EventPayload;
     (event.metadata as Record<string, unknown>)["auditLoggedLocally"] = auditLoggedLocally;
