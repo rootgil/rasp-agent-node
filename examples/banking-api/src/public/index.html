@@ -54,6 +54,7 @@
       display: grid;
       grid-template-columns: 1fr 1fr;
       gap: 1.25rem;
+      align-items: start;
     }
     @media (max-width: 640px) { .grid { grid-template-columns: 1fr; } }
 
@@ -68,7 +69,19 @@
     .card.attack h2 { color: #f87171; }
     .card.safe   h2 { color: #34d399; }
 
-    .btn-group { display: flex; flex-direction: column; gap: .5rem; }
+    .btn-group {
+      display: flex;
+      flex-direction: column;
+      gap: .5rem;
+      max-height: 350px;
+      overflow-y: auto;
+      padding-right: .25rem;
+      scrollbar-width: thin;
+      scrollbar-color: #334155 transparent;
+    }
+    .btn-group::-webkit-scrollbar { width: 4px; }
+    .btn-group::-webkit-scrollbar-track { background: transparent; }
+    .btn-group::-webkit-scrollbar-thumb { background: #334155; border-radius: 2px; }
 
     button {
       display: flex;
@@ -286,6 +299,70 @@
         </span>
       </button>
 
+      <button onclick="send('POST', '/api/auth/login', { email: { '$gt': '' }, password: { '$gt': '' } })">
+        <span class="icon">🍃</span>
+        <span>
+          <span class="label">NoSQL Injection</span>
+          <span class="payload">{ "email": {"$gt":""}, "password": {"$gt":""} }</span>
+        </span>
+      </button>
+
+      <button onclick="send('GET', '/api/transactions?search=http://169.254.169.254/latest/meta-data/')">
+        <span class="icon">🌐</span>
+        <span>
+          <span class="label">SSRF — AWS metadata endpoint</span>
+          <span class="payload">?search=http://169.254.169.254/latest/meta-data/</span>
+        </span>
+      </button>
+
+      <button onclick="send('GET', '/api/users/1?id={{7*7}}')">
+        <span class="icon">📝</span>
+        <span>
+          <span class="label">Template Injection (SSTI)</span>
+          <span class="payload">?id={{7*7}}</span>
+        </span>
+      </button>
+
+      <button onclick="send('POST', '/api/auth/login', { '__proto__': { 'admin': true }, email: 'x', password: 'x' })">
+        <span class="icon">☣️</span>
+        <span>
+          <span class="label">Prototype Pollution</span>
+          <span class="payload">{ "__proto__": { "admin": true } }</span>
+        </span>
+      </button>
+
+      <button onclick="send('GET', '/api/users/2')">
+        <span class="icon">🔁</span>
+        <span>
+          <span class="label">BOLA / IDOR — access another user</span>
+          <span class="payload">GET /api/users/2  (JWT sub mismatch probe)</span>
+        </span>
+      </button>
+
+      <button onclick="sendWithHeaders('GET', '/api/users/1', null, { 'X-Probe': 'A'.repeat(9000) })">
+        <span class="icon">📦</span>
+        <span>
+          <span class="label">Suspicious Headers — oversized value</span>
+          <span class="payload">X-Probe: &lt;9000-char string&gt;</span>
+        </span>
+      </button>
+
+      <button onclick="sendWithHeaders('GET', '/api/users/1', null, { 'X-Forwarded-Host': 'evil.com/<script>alert(1)</script>' })">
+        <span class="icon">🏠</span>
+        <span>
+          <span class="label">Host Header Injection</span>
+          <span class="payload">X-Forwarded-Host: evil.com/&lt;script&gt;alert(1)&lt;/script&gt;</span>
+        </span>
+      </button>
+
+      <button onclick="sendWithHeaders('GET', '/api/users/1', null, { 'X-Custom': 'value\r\nSet-Cookie: session=hijacked' })">
+        <span class="icon">↩️</span>
+        <span>
+          <span class="label">Header Injection (CRLF)</span>
+          <span class="payload">X-Custom: value\r\nSet-Cookie: session=hijacked</span>
+        </span>
+      </button>
+
     </div>
   </div>
 
@@ -314,13 +391,17 @@
     collectorMeta ? collectorMeta.getAttribute('content') : 'collector.rasp.dev';
 
   async function send(method, url, body) {
+    return sendWithHeaders(method, url, body, {});
+  }
+
+  async function sendWithHeaders(method, url, body, extraHeaders) {
     const el = document.getElementById('result');
     el.className = 'loading';
     el.textContent = `${method} ${url}\n\nSending…`;
 
     const opts = {
       method,
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', ...extraHeaders },
     };
     if (body) opts.body = JSON.stringify(body);
 
@@ -334,11 +415,15 @@
 
       const isBlocked = res.status === 403;
       el.className = isBlocked ? 'blocked' : 'ok';
+      const headerNote = Object.keys(extraHeaders).length
+        ? `Extra headers:\n${JSON.stringify(extraHeaders, null, 2)}\n\n`
+        : '';
       el.innerHTML =
         `<div class="status-line"><span class="status-dot ${isBlocked ? 'blocked' : 'ok'}"></span>` +
         `HTTP ${res.status} — ${ms}ms${isBlocked ? ' — BLOCKED by RASP' : ''}</div>` +
         `${method} ${url}\n\n` +
         (body ? `Request body:\n${JSON.stringify(body, null, 2)}\n\n` : '') +
+        headerNote +
         `Response:\n${text}`;
     } catch (err) {
       el.className = '';
