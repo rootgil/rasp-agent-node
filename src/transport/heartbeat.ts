@@ -18,25 +18,29 @@
  *  - All heartbeat failures are swallowed by {@link TransportClient.sendHeartbeat}
  *    so the loop never crashes.
  */
-import type { HeartbeatPayload, AgentStatus } from "../types.js";
+import type { HeartbeatPayload, AgentStatus, AgentMode } from "../types.js";
 import type { TransportClient } from "./client.js";
 import type { ValidatedRaspConfig } from "../config.js";
 
 export type KillSwitchHandler = () => void;
 export type PolicyChangeHandler = (version: string) => void;
+export type ModeChangeHandler = (mode: AgentMode) => void;
 
 export class HeartbeatScheduler {
   private timer: ReturnType<typeof setInterval> | null = null;
   private status: AgentStatus = "healthy";
   private readonly onKillSwitch: KillSwitchHandler;
   private readonly onPolicyChange: PolicyChangeHandler;
+  private readonly onModeChange: ModeChangeHandler;
+  private readonly getMode: () => AgentMode;
   private lastPolicyVersion = "";
+  private lastMode: AgentMode | "" = "";
 
   /**
    * @param client - Transport used to deliver heartbeats.
    * @param cfg - Validated config. Provides identity, mode and interval.
    * @param handlers - Callbacks fired when the backend signals a kill
-   *   switch or a policy change.
+   *   switch, a policy change, or a mode change.
    */
   constructor(
     private readonly client: TransportClient,
@@ -44,10 +48,15 @@ export class HeartbeatScheduler {
     handlers: {
       onKillSwitch: KillSwitchHandler;
       onPolicyChange: PolicyChangeHandler;
+      onModeChange: ModeChangeHandler;
+      /** Returns the agent's current enforcement mode so the heartbeat payload stays accurate. */
+      getMode: () => AgentMode;
     }
   ) {
     this.onKillSwitch = handlers.onKillSwitch;
     this.onPolicyChange = handlers.onPolicyChange;
+    this.onModeChange = handlers.onModeChange;
+    this.getMode = handlers.getMode;
   }
 
   /**
@@ -97,7 +106,7 @@ export class HeartbeatScheduler {
       runtime: this.cfg.runtime,
       framework: this.cfg.framework,
       status: this.status,
-      mode: this.cfg.mode,
+      mode: this.getMode(),
       timestamp: new Date().toISOString(),
     };
 
@@ -114,6 +123,11 @@ export class HeartbeatScheduler {
       if (this.lastPolicyVersion) {
         this.onPolicyChange(res.policyVersion);
       }
+    }
+
+    if (res.mode && res.mode !== this.lastMode) {
+      this.lastMode = res.mode;
+      this.onModeChange(res.mode);
     }
   }
 }

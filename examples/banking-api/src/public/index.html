@@ -1,0 +1,350 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Banking API — RASP Test Lab</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background: #0f1117;
+      color: #e2e8f0;
+      min-height: 100vh;
+      padding: 2rem 1rem;
+    }
+
+    header {
+      max-width: 900px;
+      margin: 0 auto 2.5rem;
+    }
+    header h1 { font-size: 1.5rem; font-weight: 700; }
+    header .tag {
+      display: inline-block;
+      margin-top: .4rem;
+      background: #7c3aed;
+      color: #fff;
+      font-size: .7rem;
+      font-weight: 600;
+      letter-spacing: .08em;
+      text-transform: uppercase;
+      padding: .15rem .6rem;
+      border-radius: 999px;
+    }
+    header p { margin-top: .75rem; color: #94a3b8; font-size: .9rem; line-height: 1.6; }
+
+    .mode-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: .4rem;
+      background: #1e293b;
+      border: 1px solid #334155;
+      border-radius: .5rem;
+      padding: .4rem .8rem;
+      font-size: .8rem;
+      color: #94a3b8;
+      margin-top: 1rem;
+    }
+    .mode-badge strong { color: #f59e0b; }
+
+    .grid {
+      max-width: 900px;
+      margin: 0 auto;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1.25rem;
+    }
+    @media (max-width: 640px) { .grid { grid-template-columns: 1fr; } }
+
+    .card {
+      background: #1e293b;
+      border: 1px solid #334155;
+      border-radius: .75rem;
+      padding: 1.25rem;
+    }
+    .card.attack { border-color: #7f1d1d; }
+    .card h2 { font-size: .85rem; font-weight: 600; text-transform: uppercase; letter-spacing: .07em; margin-bottom: 1rem; }
+    .card.attack h2 { color: #f87171; }
+    .card.safe   h2 { color: #34d399; }
+
+    .btn-group { display: flex; flex-direction: column; gap: .5rem; }
+
+    button {
+      display: flex;
+      align-items: flex-start;
+      gap: .6rem;
+      width: 100%;
+      background: #0f1117;
+      border: 1px solid #334155;
+      border-radius: .5rem;
+      padding: .6rem .8rem;
+      color: #e2e8f0;
+      font-size: .8rem;
+      cursor: pointer;
+      text-align: left;
+      transition: border-color .15s, background .15s;
+    }
+    button:hover { background: #1e293b; border-color: #475569; }
+    button .label { font-weight: 600; display: block; margin-bottom: .15rem; }
+    button .payload {
+      display: block;
+      font-family: "Fira Code", "Cascadia Code", monospace;
+      font-size: .72rem;
+      color: #94a3b8;
+      word-break: break-all;
+    }
+    button .icon { flex-shrink: 0; font-size: 1rem; padding-top: .05rem; }
+
+    .result-section {
+      max-width: 900px;
+      margin: 1.25rem auto 0;
+    }
+    .result-section h2 {
+      font-size: .85rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: .07em;
+      color: #94a3b8;
+      margin-bottom: .6rem;
+    }
+    #result {
+      background: #0f1117;
+      border: 1px solid #334155;
+      border-radius: .75rem;
+      padding: 1rem 1.25rem;
+      font-family: "Fira Code", "Cascadia Code", monospace;
+      font-size: .8rem;
+      white-space: pre-wrap;
+      word-break: break-all;
+      min-height: 120px;
+      color: #94a3b8;
+    }
+    #result.ok      { border-color: #065f46; color: #34d399; }
+    #result.blocked { border-color: #7f1d1d; color: #f87171; }
+    #result.loading { color: #475569; }
+
+    .status-line {
+      display: flex;
+      align-items: center;
+      gap: .5rem;
+      margin-bottom: .5rem;
+      font-size: .75rem;
+    }
+    .status-dot {
+      width: 8px; height: 8px;
+      border-radius: 50%;
+      background: #475569;
+      flex-shrink: 0;
+    }
+    .status-dot.ok      { background: #34d399; }
+    .status-dot.blocked { background: #f87171; }
+  </style>
+</head>
+<body>
+
+<header>
+  <h1>Banking API — RASP Test Lab</h1>
+  <span class="tag">DEV ONLY — DO NOT DEPLOY</span>
+  <p>
+    Click a button to send a request to the local server. The RASP agent inspects
+    every request before the route handler runs. In <strong>monitor</strong> mode the
+    request passes through and is logged. In <strong>block</strong> mode a detected
+    attack returns <code>403</code>.
+  </p>
+  <div class="mode-badge">
+    Mode: <strong id="mode-label">loading…</strong>
+    &nbsp;|&nbsp;
+    Collector: <strong id="collector-label">loading…</strong>
+  </div>
+</header>
+
+<div class="grid">
+
+  <!-- Safe requests -->
+  <div class="card safe">
+    <h2>Normal requests</h2>
+    <div class="btn-group">
+
+      <button onclick="send('GET', '/health')">
+        <span class="icon">✅</span>
+        <span>
+          <span class="label">Health check</span>
+          <span class="payload">GET /health</span>
+        </span>
+      </button>
+
+      <button onclick="send('POST', '/api/auth/login', { email: 'alice@acme.io', password: 'password123' })">
+        <span class="icon">🔑</span>
+        <span>
+          <span class="label">Login (valid)</span>
+          <span class="payload">POST /api/auth/login {"email":"alice@acme.io","password":"password123"}</span>
+        </span>
+      </button>
+
+      <button onclick="send('GET', '/api/users/1')">
+        <span class="icon">👤</span>
+        <span>
+          <span class="label">Get user by ID</span>
+          <span class="payload">GET /api/users/1</span>
+        </span>
+      </button>
+
+      <button onclick="send('GET', '/api/accounts/acc_001/balance')">
+        <span class="icon">💳</span>
+        <span>
+          <span class="label">Account balance</span>
+          <span class="payload">GET /api/accounts/acc_001/balance</span>
+        </span>
+      </button>
+
+      <button onclick="send('GET', '/api/transactions?page=1&limit=10')">
+        <span class="icon">📋</span>
+        <span>
+          <span class="label">List transactions</span>
+          <span class="payload">GET /api/transactions?page=1&amp;limit=10</span>
+        </span>
+      </button>
+
+      <button onclick="send('GET', '/api/documents/statement-2026-05.pdf')">
+        <span class="icon">📄</span>
+        <span>
+          <span class="label">Download document</span>
+          <span class="payload">GET /api/documents/statement-2026-05.pdf</span>
+        </span>
+      </button>
+
+    </div>
+  </div>
+
+  <!-- Attack requests -->
+  <div class="card attack">
+    <h2>Attack payloads</h2>
+    <div class="btn-group">
+
+      <button onclick="send('GET', &quot;/api/users/1?id=1' OR 1=1--&quot;)">
+        <span class="icon">💉</span>
+        <span>
+          <span class="label">SQL Injection (query param)</span>
+          <span class="payload">?id=1' OR 1=1--</span>
+        </span>
+      </button>
+
+      <button onclick="send('POST', '/api/auth/login', { email: 'admin@acme.io', password: &quot;' OR '1'='1&quot; })">
+        <span class="icon">💉</span>
+        <span>
+          <span class="label">SQL Injection (request body)</span>
+          <span class="payload">password: ' OR '1'='1</span>
+        </span>
+      </button>
+
+      <button onclick="send('GET', '/api/users/1?id=1; DROP TABLE users--')">
+        <span class="icon">💣</span>
+        <span>
+          <span class="label">SQL — DROP TABLE</span>
+          <span class="payload">?id=1; DROP TABLE users--</span>
+        </span>
+      </button>
+
+      <button onclick="send('GET', '/api/users/1?id=1 UNION SELECT username,password FROM users--')">
+        <span class="icon">🔓</span>
+        <span>
+          <span class="label">SQL Injection — UNION SELECT</span>
+          <span class="payload">?id=1 UNION SELECT username,password FROM users--</span>
+        </span>
+      </button>
+
+      <button onclick="send('GET', '/api/documents/..%2F..%2F..%2Fetc%2Fpasswd')">
+        <span class="icon">🗂️</span>
+        <span>
+          <span class="label">Path Traversal</span>
+          <span class="payload">GET /api/documents/../../../etc/passwd</span>
+        </span>
+      </button>
+
+      <button onclick="send('GET', '/api/transactions?search=%3Cscript%3Ealert(1)%3C%2Fscript%3E')">
+        <span class="icon">🕷️</span>
+        <span>
+          <span class="label">XSS</span>
+          <span class="payload">?search=&lt;script&gt;alert(1)&lt;/script&gt;</span>
+        </span>
+      </button>
+
+      <button onclick="send('GET', '/api/transactions?search=ping%20127.0.0.1%3Bcat%20%2Fetc%2Fpasswd')">
+        <span class="icon">⚡</span>
+        <span>
+          <span class="label">Command Injection</span>
+          <span class="payload">?search=ping 127.0.0.1;cat /etc/passwd</span>
+        </span>
+      </button>
+
+      <button onclick="send('GET', '/api/users/1?id=1%20AND%20SLEEP(5)--')">
+        <span class="icon">⏱️</span>
+        <span>
+          <span class="label">Blind SQLi — SLEEP</span>
+          <span class="payload">?id=1 AND SLEEP(5)--</span>
+        </span>
+      </button>
+
+    </div>
+  </div>
+
+</div>
+
+<!-- Result panel -->
+<div class="result-section">
+  <h2>Response</h2>
+  <div id="result">Click a button above to send a request…</div>
+</div>
+
+<script>
+  // Fetch RASP mode from /health on load
+  fetch('/health')
+    .then(r => r.json())
+    .then(d => {
+      document.getElementById('mode-label').textContent = d.mode ?? '?';
+    })
+    .catch(() => {
+      document.getElementById('mode-label').textContent = 'unknown';
+    });
+
+  // Show collector URL from meta tag injected by server
+  const collectorMeta = document.querySelector('meta[name="rasp-collector"]');
+  document.getElementById('collector-label').textContent =
+    collectorMeta ? collectorMeta.getAttribute('content') : 'collector.rasp.dev';
+
+  async function send(method, url, body) {
+    const el = document.getElementById('result');
+    el.className = 'loading';
+    el.textContent = `${method} ${url}\n\nSending…`;
+
+    const opts = {
+      method,
+      headers: { 'Content-Type': 'application/json' },
+    };
+    if (body) opts.body = JSON.stringify(body);
+
+    const t0 = Date.now();
+    try {
+      const res = await fetch(url, opts);
+      const ms  = Date.now() - t0;
+      let text;
+      try { text = JSON.stringify(await res.json(), null, 2); }
+      catch { text = await res.text(); }
+
+      const isBlocked = res.status === 403;
+      el.className = isBlocked ? 'blocked' : 'ok';
+      el.innerHTML =
+        `<div class="status-line"><span class="status-dot ${isBlocked ? 'blocked' : 'ok'}"></span>` +
+        `HTTP ${res.status} — ${ms}ms${isBlocked ? ' — BLOCKED by RASP' : ''}</div>` +
+        `${method} ${url}\n\n` +
+        (body ? `Request body:\n${JSON.stringify(body, null, 2)}\n\n` : '') +
+        `Response:\n${text}`;
+    } catch (err) {
+      el.className = '';
+      el.textContent = `Network error: ${err.message}`;
+    }
+  }
+</script>
+</body>
+</html>

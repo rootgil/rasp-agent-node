@@ -183,14 +183,16 @@ export interface HeartbeatPayload {
 /**
  * Response returned by the collector for `POST /v1/heartbeat`.
  *
- * The agent reacts to two fields:
+ * The agent reacts to three fields:
  *  - `killSwitch: true` → the agent stops inspecting and shuts down its buffer.
  *  - `policyVersion` change → triggers `onPolicyChange` (reserved for future rule refresh).
+ *  - `mode` → the enforcement mode stored on the server; the agent applies it immediately.
  */
 export interface HeartbeatResponse {
   ok: boolean;
   killSwitch: boolean;
   policyVersion: string;
+  mode?: AgentMode;
 }
 
 /**

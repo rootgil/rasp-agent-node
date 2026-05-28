@@ -21,6 +21,7 @@ import type {
   NormalizedRequest,
   EventPayload,
   DetectionResult,
+  AgentMode,
 } from "./types.js";
 import { RedactionEngine } from "./redaction/engine.js";
 import { AuditLog } from "./redaction/audit-log.js";
@@ -44,6 +45,11 @@ export class RaspAgent {
   private readonly discoveryBuffer: DiscoveryBuffer;
   /** Set to true after a kill-switch heartbeat — short-circuits {@link inspect}. */
   private killed = false;
+  /**
+   * Enforcement mode in effect. Initialised from `cfg.mode` and updated
+   * whenever the collector returns a different mode in a heartbeat response.
+   */
+  private currentMode: AgentMode;
 
   /**
    * Build a new agent.
@@ -60,6 +66,7 @@ export class RaspAgent {
    */
   constructor(rawConfig: RaspConfig, extraDetectors: Detector[] = []) {
     this.cfg = validateConfig(rawConfig);
+    this.currentMode = this.cfg.mode;
 
     this.redaction = new RedactionEngine();
 
@@ -81,6 +88,8 @@ export class RaspAgent {
     this.heartbeat = new HeartbeatScheduler(this.client, this.cfg, {
       onKillSwitch: () => this.handleKillSwitch(),
       onPolicyChange: (version) => this.handlePolicyChange(version),
+      onModeChange: (mode) => { this.currentMode = mode; },
+      getMode: () => this.currentMode,
     });
 
     this.detectors = [...createDefaultDetectors(), ...extraDetectors];
@@ -176,7 +185,7 @@ export class RaspAgent {
       framework: this.cfg.framework,
       eventType: detection.eventType,
       severity: detection.severity,
-      action: this.cfg.mode,
+      action: this.currentMode,
       method: req.method,
       path: req.path,
       sourceIp: req.sourceIp,

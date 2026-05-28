@@ -14,12 +14,18 @@ import { z } from "zod";
 import type { RaspConfig } from "./types.js";
 
 /**
- * Hard-coded collector base URL.
+ * Collector base URL.
  *
  * Per `AGENTS.md` "Security Rules", the agent must not perform arbitrary
  * outbound network calls — only this endpoint is allowed.
+ *
+ * `RASP_COLLECTOR_URL` is intentionally only read here so that example apps
+ * and local test environments can point the agent at a local collector without
+ * modifying source code. In production the env var is not set and the
+ * hard-coded default is used.
  */
-export const COLLECTOR_URL = "https://collector.rasp.dev";
+export const COLLECTOR_URL =
+  process.env.RASP_COLLECTOR_URL ?? "https://collector.rasp.dev";
 
 /**
  * Zod schema mirroring {@link RaspConfig}.
