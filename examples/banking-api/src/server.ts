@@ -26,7 +26,7 @@ if (process.env["NODE_ENV"] === "production") {
 
 // ── RASP agent ────────────────────────────────────────────────────────────────
 // Import directly from the agent source so no build step is needed.
-import { RaspAgent, createExpressMiddleware } from "../../../src/index.js";
+import { RaspAgent, createExpressMiddleware } from "@queno/agent-node";
 
 const agent = new RaspAgent({
   apiKey:       process.env["RASP_API_KEY"]    ?? "rasp_demo_key_abc123",
