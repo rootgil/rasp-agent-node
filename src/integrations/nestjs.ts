@@ -52,17 +52,29 @@ export function createNestMiddleware(agent: RaspAgent): new () => NestMiddleware
           sourceIp: extractSourceIp(req),
         };
 
+        const ctx = agent.beginRequest(normalized);
+
         const detection = agent.inspect(normalized);
 
-        if (detection && agent["cfg"].mode === "block") {
+        if (detection && agent.mode === "block") {
           res.status(403).json({
             error: "Request blocked by RASP",
             eventType: detection.eventType,
           });
           return;
         }
+
+        const start = Date.now();
+        res.on("finish", () => {
+          const r = req as Request & { user?: unknown; auth?: unknown };
+          agent.endRequest(ctx, normalized, {
+            statusCode: res.statusCode,
+            durationMs: Date.now() - start,
+            authenticated: r.user != null || r.auth != null,
+          });
+        });
       } catch {
-        // Fail-open — see file-level note.
+        // Fail-open - see file-level note.
       }
       next();
     }

@@ -3,14 +3,14 @@
  *
  * Looks for the canonical delimiter shapes of popular server-side template
  * engines:
- *  - `{{ … }}` / `{% … %}` — Twig, Jinja2, Nunjucks, Pebble.
- *  - `<% … %>` — ERB, EJS.
- *  - `{{{ … }}}` — Handlebars triple-stache.
- *  - `${ … }` — Thymeleaf (and JSP EL).
- *  - `#{ … }` — Velocity.
- *  - `<#… >` — Freemarker.
+ *  - `{{ … }}` / `{% … %}` - Twig, Jinja2, Nunjucks, Pebble.
+ *  - `<% … %>` - ERB, EJS.
+ *  - `{{{ … }}}` - Handlebars triple-stache.
+ *  - `${ … }` - Thymeleaf (and JSP EL).
+ *  - `#{ … }` - Velocity.
+ *  - `<#… >` - Freemarker.
  *
- * Also matches the classic `7*7` math probe in each delimiter style — a
+ * Also matches the classic `7*7` math probe in each delimiter style - a
  * cheap, very high-signal indicator.
  *
  * Severity: `high`.

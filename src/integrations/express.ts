@@ -49,17 +49,31 @@ export function createExpressMiddleware(agent: RaspAgent) {
         sourceIp: extractSourceIp(req),
       };
 
+      // Bind a runtime context (DB correlation) before the handler runs.
+      const ctx = agent.beginRequest(normalized);
+
       const detection = agent.inspect(normalized);
 
-      if (detection && agent["cfg"].mode === "block") {
+      if (detection && agent.mode === "block") {
         res.status(403).json({
           error: "Request blocked by RASP",
           eventType: detection.eventType,
         });
         return;
       }
+
+      // Response-phase observation for traffic profiling + auth confirmation.
+      const start = Date.now();
+      res.on("finish", () => {
+        const r = req as Request & { user?: unknown; auth?: unknown };
+        agent.endRequest(ctx, normalized, {
+          statusCode: res.statusCode,
+          durationMs: Date.now() - start,
+          authenticated: r.user != null || r.auth != null,
+        });
+      });
     } catch {
-      // Fail-open — see file-level note.
+      // Fail-open - see file-level note.
     }
 
     next();
@@ -71,7 +85,7 @@ export function createExpressMiddleware(agent: RaspAgent) {
  *  1. First entry of `X-Forwarded-For`, when present (string or array).
  *  2. Fallback to `req.socket.remoteAddress`.
  *
- * No trust validation is performed — operators relying on `X-Forwarded-For`
+ * No trust validation is performed - operators relying on `X-Forwarded-For`
  * must terminate it at a known proxy.
  */
 function extractSourceIp(req: Request): string | undefined {

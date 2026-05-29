@@ -3,18 +3,18 @@
  *
  * OWASP API Security Top-10 #1. Two complementary heuristics:
  *
- * 1. **JWT-sub mismatch** — if the `Authorization: Bearer …` header carries
+ * 1. **JWT-sub mismatch** - if the `Authorization: Bearer …` header carries
  *    a JWT whose `sub` claim does not match the resource ID present in the
  *    URL path, the request is flagged. This catches user A trying to read
  *    user B's resource by directly tampering with the URL.
  *
- * 2. **High-velocity ID enumeration** — per source IP, the detector tracks
+ * 2. **High-velocity ID enumeration** - per source IP, the detector tracks
  *    distinct resource IDs seen in the path over a rolling
  *    {@link WINDOW_MS} window. More than {@link DISTINCT_ID_THRESHOLD}
  *    distinct IDs in that window triggers an alert: behaviour consistent
  *    with a scripted scrape.
  *
- * Both heuristics rely on the path containing a recognisable object ID —
+ * Both heuristics rely on the path containing a recognisable object ID -
  * the detector looks for short numeric segments or RFC 4122 UUIDs.
  *
  * Severity: `high`.
@@ -118,7 +118,7 @@ export class BolaDetector implements Detector {
  * Return the first path segment that looks like a resource ID, or `null` if
  * no segment matches.
  */
-function extractPathId(path: string): string | null {
+export function extractPathId(path: string): string | null {
   const segments = path.split("/").filter(Boolean);
   for (const seg of segments) {
     if (NUMERIC_ID_RE.test(seg) || UUID_RE.test(seg)) {
@@ -136,7 +136,7 @@ function extractPathId(path: string): string | null {
  * cross-check (BOLA), never for authentication decisions. Returns `null`
  * for any malformed input.
  */
-function extractJwtSub(authHeader: string | string[] | undefined): string | null {
+export function extractJwtSub(authHeader: string | string[] | undefined): string | null {
   const header = Array.isArray(authHeader) ? authHeader[0] : authHeader;
   if (!header?.startsWith("Bearer ")) return null;
   const token = header.slice(7);

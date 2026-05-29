@@ -22,7 +22,7 @@ export { type Detector } from "./base.js";
 /**
  * Build a fresh array of the bundled detectors.
  *
- * Each call returns brand-new detector instances — important because a few
+ * Each call returns brand-new detector instances - important because a few
  * detectors (notably {@link BolaDetector}) carry per-IP state.
  */
 export function createDefaultDetectors(): Detector[] {

@@ -3,12 +3,12 @@
  *
  * Two complementary strategies:
  *
- * 1. **Value scan** — string values are checked for serialised MongoDB
+ * 1. **Value scan** - string values are checked for serialised MongoDB
  *    operator forms (`$where:`, `{ $gt: ... }`, `mapReduce(...)`). Catches
  *    payloads injected through query strings or JSON bodies that the
  *    application later passes through unsafe deserialisation.
  *
- * 2. **Key scan** — any leaf object key matching `^$[a-z]+$` is flagged.
+ * 2. **Key scan** - any leaf object key matching `^$[a-z]+$` is flagged.
  *    This is the classic `{ password: { $gt: "" } }` attack where the
  *    operator is smuggled in as a sub-object instead of a scalar.
  *

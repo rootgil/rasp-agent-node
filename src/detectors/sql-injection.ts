@@ -6,11 +6,11 @@
  * statements with destructive verbs, blind-injection sleep functions and
  * SQL Server metadata views.
  *
- * Severity: `critical` — SQLi typically yields direct data exfiltration.
+ * Severity: `critical` - SQLi typically yields direct data exfiltration.
  *
  * Known limits: pattern-based; an attacker who heavily obfuscates the
  * payload (case mixing, comments between keywords) may evade some signatures.
- * Headers are intentionally **not** scanned to keep cost down — they're
+ * Headers are intentionally **not** scanned to keep cost down - they're
  * covered by other detectors.
  */
 import type { Detector, } from "./base.js";

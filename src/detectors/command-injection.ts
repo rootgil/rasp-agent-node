@@ -8,7 +8,7 @@
  * `/proc/self`, and the language-level eval gadgets (`exec()`, `eval()`,
  * `system()`, `popen()`).
  *
- * Severity: `critical` — successful OS command injection is full RCE.
+ * Severity: `critical` - successful OS command injection is full RCE.
  *
  * Known limits: pattern-based; obfuscation via env-var assembly (`a=ls;$a`)
  * or base64 piped into `sh` may evade signatures.

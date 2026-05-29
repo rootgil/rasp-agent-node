@@ -8,7 +8,7 @@ const FAKE_USERS: Record<string, { id: string; name: string; role: string }> = {
 };
 
 // POST /api/auth/login
-// Accepts any body — the RASP agent inspects it before we ever touch it.
+// Accepts any body - the RASP agent inspects it before we ever touch it.
 // The comparison is in-memory only; no SQL is executed.
 router.post("/login", (req, res) => {
   const { email, password } = req.body ?? {};

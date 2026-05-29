@@ -4,7 +4,7 @@
  * Examples:
  *   /api/users/42          → /api/users/:id
  *   /api/users/abc-123-def → /api/users/:id   (UUID-like)
- *   /api/users/me          → /api/users/me    (unchanged — not ID-like)
+ *   /api/users/me          → /api/users/me    (unchanged - not ID-like)
  */
 
 /** Matches plain numeric IDs up to 12 digits (e.g. 42, 100000000000). */

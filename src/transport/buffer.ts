@@ -36,7 +36,7 @@ export class EventBuffer {
 
     this.timer = setInterval(() => {
       this.flush().catch(() => {
-        // Fail-open — transport errors must not propagate.
+        // Fail-open - transport errors must not propagate.
       });
     }, cfg.flushIntervalMs);
 
@@ -50,7 +50,7 @@ export class EventBuffer {
    * `maxSize`.
    *
    * The event is expected to have already passed through the redaction
-   * engine — the buffer does not sanitise.
+   * engine - the buffer does not sanitise.
    */
   enqueue(event: EventPayload): void {
     this.queue.push(event);
@@ -74,7 +74,7 @@ export class EventBuffer {
     await Promise.allSettled(
       batch.map((event) =>
         this.client.sendEvent(event).catch(() => {
-          // Per-event failure — the event is dropped.
+          // Per-event failure - the event is dropped.
         })
       )
     );

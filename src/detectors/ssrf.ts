@@ -14,7 +14,7 @@
  *
  * Known limits: matching is purely lexical. DNS-rebinding payloads
  * (`internal.attacker.com` resolving to `127.0.0.1`) and Unicode
- * homoglyphs in hostnames are not caught here — they need runtime DNS
+ * homoglyphs in hostnames are not caught here - they need runtime DNS
  * inspection which is out of scope.
  */
 import type { Detector } from "./base.js";
@@ -49,7 +49,7 @@ export class SsrfDetector implements Detector {
             detectorName: this.name,
             eventType: "ssrf",
             severity: "high",
-            description: "SSRF — request targets an internal or metadata endpoint",
+            description: "SSRF - request targets an internal or metadata endpoint",
             matchedValue: val.slice(0, 200),
             location: "query/body",
           };

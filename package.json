@@ -1,7 +1,7 @@
 {
   "name": "@rasp/agent-node",
-  "version": "0.1.0",
-  "description": "RASP agent for Node.js — Express, Fastify, NestJS",
+  "version": "0.1.2",
+  "description": "RASP agent for Node.js - Express, Fastify, NestJS",
   "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",

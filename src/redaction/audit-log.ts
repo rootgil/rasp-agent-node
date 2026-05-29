@@ -4,9 +4,9 @@
  * Per `AGENTS.md` "Local Redaction Audit Log" rules:
  *  - every redaction action is recorded locally inside the customer
  *    environment;
- *  - lines never contain raw sensitive values — only metadata;
+ *  - lines never contain raw sensitive values - only metadata;
  *  - log rotation by file size is supported to avoid filling the disk;
- *  - audit-log failures must NEVER crash the host application — every
+ *  - audit-log failures must NEVER crash the host application - every
  *    failure path here returns silently.
  *
  * On-disk format: JSON-Lines (one {@link RedactionAuditEntry} per line),
@@ -57,7 +57,7 @@ export class AuditLog {
         this.currentBytes += lineBytes;
       }
     } catch {
-      // Intentional — see class-level note.
+      // Intentional - see class-level note.
     }
   }
 
@@ -100,7 +100,7 @@ export class AuditLog {
   /**
    * Close the active file, rename it to `<path>.<rotationIndex>` and reopen
    * a fresh one. If the rename fails (e.g. EACCES), keep writing to the
-   * same file — losing rotation is preferred to losing audit data.
+   * same file - losing rotation is preferred to losing audit data.
    */
   private rotate(): void {
     this.close();

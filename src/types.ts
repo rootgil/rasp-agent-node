@@ -45,8 +45,10 @@ export interface RaspConfig {
   agentId: string;
   /** Free-form agent version string, echoed back in telemetry for debugging. */
   agentVersion?: string;
-  /** Enforcement mode. Defaults to `monitor` — see {@link AgentMode}. */
+  /** Enforcement mode. Defaults to `monitor` - see {@link AgentMode}. */
   mode?: AgentMode;
+  /** Stability channel for policy/version distribution. Default `stable`. */
+  channel?: "stable" | "early" | "edge";
   /** Heartbeat interval in ms. Min 5_000, default 30_000. */
   heartbeatIntervalMs?: number;
   /** Buffer flush interval in ms. Min 1_000, default 5_000. */
@@ -67,6 +69,39 @@ export interface RaspConfig {
   runtime?: string;
   /** Discovery flush interval in ms. Min 5_000, default 60_000. */
   discoveryFlushIntervalMs?: number;
+  /**
+   * Pinned Ed25519 public key (PEM, SPKI) used to verify signed policies
+   * distributed by the control plane. This is the trust anchor (Addendum
+   * E.4.1). In production it is embedded in the package by default and may be
+   * overridden here for sovereign/on-prem deployments. When absent, the agent
+   * cannot apply any policy and stays on its boot configuration (fail-safe).
+   */
+  policyPublicKey?: string;
+  /** Per-request HMAC secret used to sign telemetry batches (Addendum E.5). */
+  hmacSecret?: string;
+  /**
+   * Instrument common database drivers (pg, mysql2, mongoose, sequelize, knex)
+   * to enable BOLA-via-DB correlation (Addendum A.4). Off by default; enabling
+   * monkey-patches driver query methods at agent start.
+   */
+  instrumentDb?: boolean;
+  /**
+   * Enable runtime self-protection (Addendum E.7): periodic DB-hook integrity
+   * checks and basic anti-debug detection. Secrets are always held encrypted in
+   * memory regardless of this flag. Defaults to `false`.
+   */
+  selfProtect?: boolean;
+  /**
+   * TLS options for certificate pinning + mutual TLS to the collector
+   * (Addendum E.4.2). When set, the agent uses a pinned HTTPS transport.
+   */
+  tls?: {
+    caCert?: string;
+    clientCert?: string;
+    clientKey?: string;
+    collectorFingerprints?: string[];
+    rejectUnauthorized?: boolean;
+  };
 }
 
 /**
@@ -106,7 +141,7 @@ export interface DetectionResult {
   /** Human-readable description of what was detected. */
   description: string;
   /**
-   * The matched value or pattern. This may contain sensitive substrings — the
+   * The matched value or pattern. This may contain sensitive substrings - the
    * redaction engine MUST be run before the event leaves the process.
    */
   matchedValue?: string;
@@ -193,6 +228,14 @@ export interface HeartbeatResponse {
   killSwitch: boolean;
   policyVersion: string;
   mode?: AgentMode;
+  /** Version this agent should be running (canary cohort / pin). */
+  targetVersion?: string | null;
+  /** True when `targetVersion` differs from the running version. */
+  upgradeAvailable?: boolean;
+  /** Changelog for the target version (shown in logs). */
+  changelog?: string | null;
+  /** Expected impact/risk notes for the target version. */
+  impact?: string | null;
 }
 
 /**
@@ -216,6 +259,31 @@ export interface DiscoveryEntry {
   hasSensitiveData: boolean;
   /** Number of observations since the last flush. */
   observationCount: number;
+  /**
+   * Whether an auth middleware was observed populating the request
+   * (e.g. `req.user`/`req.auth`). More reliable than the header heuristic.
+   */
+  authObserved?: boolean;
+  /** Count of responses with status >= 400 since the last flush. */
+  errorCount?: number;
+  /** Sum of observed response durations (ms); used to derive an average. */
+  sumDurationMs?: number;
+  /** Number of responses timed (denominator for the average). */
+  timedCount?: number;
+  /** Inferred parameter schema: field name -> JSON type. */
+  schemaFields?: Record<string, string>;
+}
+
+/**
+ * Response-phase outcome fed back to the {@link EndpointObserver} so it can
+ * build a traffic profile (error rate, latency) and confirm auth middleware
+ * execution.
+ */
+export interface RequestOutcome {
+  statusCode?: number;
+  durationMs?: number;
+  /** True if an auth middleware populated the request (req.user / req.auth). */
+  authenticated?: boolean;
 }
 
 /**
@@ -233,7 +301,7 @@ export interface DiscoveryPayload {
 /**
  * A single line written to the local redaction audit log.
  *
- * Serialised as one JSON object per line (JSONL). Contains only metadata —
+ * Serialised as one JSON object per line (JSONL). Contains only metadata -
  * never the raw redacted values.
  */
 export interface RedactionAuditEntry {

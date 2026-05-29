@@ -3,7 +3,7 @@ import { Router } from "express";
 const router = Router();
 
 // DELETE /api/admin/users/:id
-// Requires a fake admin token header — illustrates auth-based BOLA detection.
+// Requires a fake admin token header - illustrates auth-based BOLA detection.
 // No user is actually deleted.
 router.delete("/users/:id", (req, res) => {
   const token = req.headers["authorization"];

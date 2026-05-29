@@ -23,18 +23,31 @@ import type { TransportClient } from "./client.js";
 import type { ValidatedRaspConfig } from "../config.js";
 
 export type KillSwitchHandler = () => void;
+export type RecoverHandler = () => void;
 export type PolicyChangeHandler = (version: string) => void;
 export type ModeChangeHandler = (mode: AgentMode) => void;
+export interface TargetVersionInfo {
+  targetVersion: string | null;
+  upgradeAvailable: boolean;
+  changelog: string | null;
+  impact: string | null;
+}
+export type TargetVersionHandler = (info: TargetVersionInfo) => void;
 
 export class HeartbeatScheduler {
   private timer: ReturnType<typeof setInterval> | null = null;
   private status: AgentStatus = "healthy";
   private readonly onKillSwitch: KillSwitchHandler;
+  private readonly onRecover?: RecoverHandler;
   private readonly onPolicyChange: PolicyChangeHandler;
   private readonly onModeChange: ModeChangeHandler;
+  private readonly onTargetVersion?: TargetVersionHandler;
   private readonly getMode: () => AgentMode;
   private lastPolicyVersion = "";
   private lastMode: AgentMode | "" = "";
+  private lastTargetVersion: string | null | undefined = undefined;
+  /** Tracks whether the kill switch was active on the last heartbeat response. */
+  private killSwitchActive = false;
 
   /**
    * @param client - Transport used to deliver heartbeats.
@@ -47,20 +60,25 @@ export class HeartbeatScheduler {
     private readonly cfg: ValidatedRaspConfig,
     handlers: {
       onKillSwitch: KillSwitchHandler;
+      /** Called once when the kill switch transitions from active back to inactive. */
+      onRecover?: RecoverHandler;
       onPolicyChange: PolicyChangeHandler;
       onModeChange: ModeChangeHandler;
+      onTargetVersion?: TargetVersionHandler;
       /** Returns the agent's current enforcement mode so the heartbeat payload stays accurate. */
       getMode: () => AgentMode;
     }
   ) {
     this.onKillSwitch = handlers.onKillSwitch;
+    this.onRecover = handlers.onRecover;
     this.onPolicyChange = handlers.onPolicyChange;
     this.onModeChange = handlers.onModeChange;
+    this.onTargetVersion = handlers.onTargetVersion;
     this.getMode = handlers.getMode;
   }
 
   /**
-   * Send an immediate heartbeat and arm the periodic loop. Idempotent —
+   * Send an immediate heartbeat and arm the periodic loop. Idempotent -
    * calling `start` twice has no extra effect.
    */
   start(): void {
@@ -113,9 +131,12 @@ export class HeartbeatScheduler {
     const res = await this.client.sendHeartbeat(payload);
     if (!res) return;
 
-    if (res.killSwitch) {
-      this.stop();
+    if (res.killSwitch && !this.killSwitchActive) {
+      this.killSwitchActive = true;
       this.onKillSwitch();
+    } else if (!res.killSwitch && this.killSwitchActive) {
+      this.killSwitchActive = false;
+      this.onRecover?.();
     }
 
     if (res.policyVersion && res.policyVersion !== this.lastPolicyVersion) {
@@ -128,6 +149,16 @@ export class HeartbeatScheduler {
     if (res.mode && res.mode !== this.lastMode) {
       this.lastMode = res.mode;
       this.onModeChange(res.mode);
+    }
+
+    if (this.onTargetVersion && res.targetVersion !== this.lastTargetVersion) {
+      this.lastTargetVersion = res.targetVersion ?? null;
+      this.onTargetVersion({
+        targetVersion: res.targetVersion ?? null,
+        upgradeAvailable: res.upgradeAvailable ?? false,
+        changelog: res.changelog ?? null,
+        impact: res.impact ?? null,
+      });
     }
   }
 }

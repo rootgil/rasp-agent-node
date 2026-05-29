@@ -1,7 +1,7 @@
 {
   "name": "banking-api-example",
   "version": "0.1.0",
-  "description": "DEV-ONLY example app for testing the RASP agent — do not deploy",
+  "description": "DEV-ONLY example app for testing the RASP agent - do not deploy",
   "private": true,
   "type": "module",
   "scripts": {

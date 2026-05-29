@@ -46,16 +46,48 @@ export function createFastifyPlugin(agent: RaspAgent) {
             sourceIp: extractSourceIp(request),
           };
 
+          const ctx = agent.beginRequest(normalized);
+          (request as FastifyRequest & { __raspCtx?: unknown }).__raspCtx = ctx;
+
           const detection = agent.inspect(normalized);
 
-          if (detection && agent["cfg"].mode === "block") {
+          if (detection && agent.mode === "block") {
             return reply.status(403).send({
               error: "Request blocked by RASP",
               eventType: detection.eventType,
             });
           }
         } catch {
-          // Fail-open — see file-level note.
+          // Fail-open - see file-level note.
+        }
+      }
+    );
+
+    // Response-phase observation for traffic profiling + auth confirmation.
+    fastify.addHook(
+      "onResponse",
+      async (request: FastifyRequest, reply: FastifyReply): Promise<void> => {
+        try {
+          const normalized: NormalizedRequest = {
+            method: request.method,
+            path: request.url.split("?")[0] ?? request.url,
+            query: (request.query as Record<string, unknown>) ?? {},
+            headers: request.headers as Record<string, string | string[] | undefined>,
+            body: request.body,
+            sourceIp: undefined,
+          };
+          const r = request as FastifyRequest & {
+            user?: unknown;
+            auth?: unknown;
+            __raspCtx?: import("../runtime-context.js").RequestContext | null;
+          };
+          agent.endRequest(r.__raspCtx ?? null, normalized, {
+            statusCode: reply.statusCode,
+            durationMs: Math.round(reply.elapsedTime),
+            authenticated: r.user != null || r.auth != null,
+          });
+        } catch {
+          // Fail-open.
         }
       }
     );
