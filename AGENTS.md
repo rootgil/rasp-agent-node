@@ -1,4 +1,4 @@
-# AGENTS.md — rasp-agent-node
+# AGENTS.md - rasp-agent-node
 
 This repository contains the Node.js RASP agent.
 
