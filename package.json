@@ -1,5 +1,5 @@
 {
-  "name": "@rasp/agent-node",
+  "name": "@queno/agent-node",
   "version": "0.1.2",
   "description": "RASP agent for Node.js - Express, Fastify, NestJS",
   "type": "module",
@@ -53,5 +53,8 @@
   },
   "engines": {
     "node": ">=18"
+  },
+  "publishConfig": {
+    "access": "public"
   }
 }

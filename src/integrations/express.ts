@@ -16,7 +16,7 @@
  * @example
  * ```ts
  * import express from "express";
- * import { RaspAgent, createExpressMiddleware } from "@rasp/agent-node";
+ * import { RaspAgent, createExpressMiddleware } from "@queno/agent-node";
  *
  * const agent = new RaspAgent({ apiKey, projectId, agentId, mode: "monitor" });
  * agent.start();

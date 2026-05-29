@@ -1,5 +1,5 @@
 /**
- * Public entry point for `@rasp/agent-node`.
+ * Public entry point for `@queno/agent-node`.
  *
  * Re-exports the runtime surface that customer applications are expected to
  * consume:

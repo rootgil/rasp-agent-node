@@ -14,7 +14,7 @@
  * @example
  * ```ts
  * import Fastify from "fastify";
- * import { RaspAgent, createFastifyPlugin } from "@rasp/agent-node";
+ * import { RaspAgent, createFastifyPlugin } from "@queno/agent-node";
  *
  * const agent = new RaspAgent({ apiKey, projectId, agentId });
  * agent.start();

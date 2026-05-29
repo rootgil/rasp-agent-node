@@ -1,5 +1,5 @@
 /**
- * Public type definitions for `@rasp/agent-node`.
+ * Public type definitions for `@queno/agent-node`.
  *
  * These types form the contract between:
  *  - the customer application (RaspConfig, NormalizedRequest),
