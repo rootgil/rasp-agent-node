@@ -1,13 +1,13 @@
-# @rasp/agent-node
+# @queno/agent-node
 
 > Runtime Application Self-Protection for Node.js - Express · Fastify · NestJS
 
-[![npm version](https://img.shields.io/badge/npm-0.1.2-blue)](https://www.npmjs.com/package/@rasp/agent-node)
+[![npm version](https://img.shields.io/badge/npm-0.1.2-blue)](https://www.npmjs.com/package/@queno/agent-node)
 [![node](https://img.shields.io/badge/node-%3E%3D18-brightgreen)](https://nodejs.org)
 [![license](https://img.shields.io/badge/license-MIT-green)](./LICENSE)
 [![build](https://img.shields.io/badge/build-passing-brightgreen)](#)
 
-`@rasp/agent-node` is a lightweight RASP agent that installs inside your Node.js application and **detects, redacts, audits, and optionally blocks** runtime attacks - without a proxy, without a WAF, and without crashing your app.
+`@queno/agent-node` is a lightweight RASP agent that installs inside your Node.js application and **detects, redacts, audits, and optionally blocks** runtime attacks - without a proxy, without a WAF, and without crashing your app.
 
 It instruments Express, Fastify, and NestJS middleware to inspect each incoming request against 10 built-in attack detectors. Sensitive data is redacted **before leaving the process**, a tamper-evident audit log is written locally, and security events are forwarded to the RASP collector.
 
@@ -43,13 +43,13 @@ It instruments Express, Fastify, and NestJS middleware to inspect each incoming 
 
 ```bash
 # npm
-npm install @rasp/agent-node
+npm install @queno/agent-node
 
 # pnpm
-pnpm add @rasp/agent-node
+pnpm add @queno/agent-node
 
 # yarn
-yarn add @rasp/agent-node
+yarn add @queno/agent-node
 ```
 
 Install the peer dependency for your framework - only what you need:
@@ -75,7 +75,7 @@ Before you start: create a **Project** and an **Agent** in the RASP dashboard, t
 
 ```typescript
 import express from "express";
-import { RaspAgent, createExpressMiddleware } from "@rasp/agent-node";
+import { RaspAgent, createExpressMiddleware } from "@queno/agent-node";
 
 // 1. Create and start the agent
 const agent = new RaspAgent({
@@ -113,7 +113,7 @@ app.listen(3000);
 
 ```typescript
 import Fastify from "fastify";
-import { RaspAgent, createFastifyPlugin } from "@rasp/agent-node";
+import { RaspAgent, createFastifyPlugin } from "@queno/agent-node";
 
 const agent = new RaspAgent({
   apiKey:    process.env.RASP_API_KEY!,
@@ -145,7 +145,7 @@ process.on("SIGTERM", async () => {
 ```typescript
 // rasp.module.ts
 import { Module, NestModule, MiddlewareConsumer } from "@nestjs/common";
-import { RaspAgent, createNestMiddleware } from "@rasp/agent-node";
+import { RaspAgent, createNestMiddleware } from "@queno/agent-node";
 
 export const raspAgent = new RaspAgent({
   apiKey:    process.env.RASP_API_KEY!,
@@ -304,7 +304,7 @@ Every exception inside the agent - in detectors, transport, audit log - is caugh
 ### Custom detector
 
 ```typescript
-import { RaspAgent, Detector, NormalizedRequest, DetectionResult } from "@rasp/agent-node";
+import { RaspAgent, Detector, NormalizedRequest, DetectionResult } from "@queno/agent-node";
 
 const myDetector: Detector = {
   name: "my-detector",
@@ -332,7 +332,7 @@ const agent = new RaspAgent(
 
 ```typescript
 import { PrismaClient } from "@prisma/client";
-import { instrumentPrismaClient } from "@rasp/agent-node";
+import { instrumentPrismaClient } from "@queno/agent-node";
 
 const prisma = new PrismaClient({
   log: [{ emit: "event", level: "query" }], // required

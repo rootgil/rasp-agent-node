@@ -9,7 +9,7 @@
     "noEmit": true,
     "baseUrl": ".",
     "paths": {
-      "@rasp/agent-node": ["../../src/index.ts"]
+      "@queno/agent-node": ["../../src/index.ts"]
     }
   },
   "include": ["src", "../../src"]

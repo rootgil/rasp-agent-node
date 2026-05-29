@@ -15,7 +15,7 @@
  * @example
  * ```ts
  * import { MiddlewareConsumer, Module, NestModule } from "@nestjs/common";
- * import { RaspAgent, createNestMiddleware } from "@rasp/agent-node";
+ * import { RaspAgent, createNestMiddleware } from "@queno/agent-node";
  *
  * const agent = new RaspAgent({ apiKey, projectId, agentId });
  * agent.start();
