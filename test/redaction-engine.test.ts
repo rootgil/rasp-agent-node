@@ -202,3 +202,140 @@ describe("key-based redaction: password field", () => {
     expect(redactedFields).toContain("metadata.password");
   });
 });
+
+// ---------------------------------------------------------------------------
+// Allowlist mode tests
+// ---------------------------------------------------------------------------
+
+describe("allowlist mode: drops non-approved metadata fields", () => {
+  const engineAL = new RedactionEngine({ mode: "allowlist" });
+  const payload = makePayload({
+    metadata: {
+      redacted: true,
+      matchedRule: "xss",
+      detectorDescription: "Cross-site scripting",
+      location: "query.search",
+      matchedValue: "<script>",
+    },
+  });
+
+  const { redacted, redactedFields } = engineAL.redact(payload);
+  const meta = (redacted as typeof payload).metadata;
+
+  it("preserves structural sub-keys (matchedRule, redacted)", () => {
+    expect(meta.matchedRule).toBe("xss");
+    expect(meta.redacted).toBe(true);
+  });
+
+  it("drops detectorDescription from the payload", () => {
+    expect("detectorDescription" in meta).toBe(false);
+  });
+
+  it("drops location from the payload", () => {
+    expect("location" in meta).toBe(false);
+  });
+
+  it("drops matchedValue (not in allowKeyPatterns)", () => {
+    expect("matchedValue" in meta).toBe(false);
+  });
+
+  it("reports dropped fields in redactedFields", () => {
+    expect(redactedFields).toContain("metadata.detectorDescription");
+    expect(redactedFields).toContain("metadata.location");
+    expect(redactedFields).toContain("metadata.matchedValue");
+  });
+
+  it("never emits [REDACTED] sentinel for dropped fields", () => {
+    expect(JSON.stringify(redacted)).not.toContain("[REDACTED]");
+  });
+});
+
+describe("allowlist mode: denylist key is dropped (not [REDACTED])", () => {
+  const engineAL = new RedactionEngine({ mode: "allowlist" });
+  const payload = makePayload({
+    metadata: {
+      redacted: true,
+      matchedRule: "sql-injection",
+      matchedValue: "1' OR 1=1",
+      password: "s3cr3t",
+    },
+  });
+
+  const { redacted, redactedFields } = engineAL.redact(payload);
+  const meta = (redacted as typeof payload).metadata;
+
+  it("drops password field entirely (not [REDACTED])", () => {
+    expect("password" in meta).toBe(false);
+    expect(JSON.stringify(redacted)).not.toContain("s3cr3t");
+  });
+
+  it("reports metadata.password in redactedFields", () => {
+    expect(redactedFields).toContain("metadata.password");
+  });
+});
+
+describe("allowlist mode: allowKeyPatterns preserves extra field", () => {
+  const engineAL = new RedactionEngine({
+    mode: "allowlist",
+    allowKeyPatterns: [/^matchedValue$/],
+  });
+  const payload = makePayload({
+    metadata: {
+      redacted: true,
+      matchedRule: "xss",
+      matchedValue: "<script>alert(1)</script>",
+      location: "query.q",
+    },
+  });
+
+  const { redacted } = engineAL.redact(payload);
+  const meta = (redacted as typeof payload).metadata;
+
+  it("keeps matchedValue because it matches allowKeyPatterns", () => {
+    expect(meta.matchedValue).toBe("<script>alert(1)</script>");
+  });
+
+  it("still drops location (not in allowKeyPatterns)", () => {
+    expect("location" in meta).toBe(false);
+  });
+});
+
+describe("allowlist mode: non-approved root-level custom object dropped entirely", () => {
+  const engineAL = new RedactionEngine({ mode: "allowlist" });
+  const payload = {
+    ...makePayload(),
+    customerData: { name: "Alice", account: "123" },
+  };
+
+  const { redacted, redactedFields } = engineAL.redact(payload);
+
+  it("drops customerData key entirely", () => {
+    expect("customerData" in (redacted as Record<string, unknown>)).toBe(false);
+  });
+
+  it("reports customerData in redactedFields", () => {
+    expect(redactedFields).toContain("customerData");
+  });
+});
+
+describe("allowlist mode: value redaction still applies to approved fields", () => {
+  const engineAL = new RedactionEngine({
+    mode: "allowlist",
+    allowKeyPatterns: [/^matchedValue$/],
+  });
+  const payload = makePayload({
+    metadata: {
+      redacted: true,
+      matchedRule: "xss",
+      matchedValue: "contact alice@example.com",
+    },
+  });
+
+  const { redacted } = engineAL.redact(payload);
+  const meta = (redacted as typeof payload).metadata;
+
+  it("hashes email inside an approved field", () => {
+    expect(meta.matchedValue).toMatch(/\[EMAIL:[0-9a-f]{16}\]/);
+    expect(meta.matchedValue).not.toContain("alice@example.com");
+  });
+});

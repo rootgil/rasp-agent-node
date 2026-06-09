@@ -8,8 +8,10 @@
  *     (credit cards, SIN, email, health IDs, IPs, SQL literals) and masked.
  *  3. Mode:
  *     - `denylist` (default): strip known-sensitive data, pass everything else.
- *     - `allowlist`: redact every value except explicitly approved keys (and a
- *       fixed set of structural envelope keys required by the collector).
+ *     - `allowlist` (high-security): drops every field that is not in
+ *       {@link STRUCTURAL_KEYS} or matched by `allowKeyPatterns`. Container
+ *       keys listed in {@link CONTAINER_KEYS} (e.g. `metadata`) are never
+ *       dropped themselves; their children are filtered individually.
  *
  * The walker returns a new object - the input is never mutated. A thrown error
  * is treated by the agent as a fatal redaction failure (the event is dropped).
@@ -34,6 +36,7 @@ export interface RedactionResult {
  * can still validate and route the event.
  */
 const STRUCTURAL_KEYS = new Set([
+  // top-level envelope
   "projectId",
   "agentId",
   "agentVersion",
@@ -46,10 +49,18 @@ const STRUCTURAL_KEYS = new Set([
   "path",
   "sourceIp",
   "timestamp",
+  // metadata sub-keys always required by the collector
   "redacted",
   "matchedRule",
   "auditLoggedLocally",
 ]);
+
+/**
+ * Object keys that are never dropped in allowlist mode but whose children are
+ * filtered individually. This prevents the entire `metadata` block from being
+ * removed when only some of its inner keys are approved.
+ */
+const CONTAINER_KEYS = new Set(["metadata"]);
 
 export interface RedactionEngineOptions {
   mode?: "denylist" | "allowlist";
@@ -132,6 +143,14 @@ export class RedactionEngine {
       const result: Record<string, unknown> = {};
       for (const [k, v] of Object.entries(value as Record<string, unknown>)) {
         const fieldPath = path ? `${path}.${k}` : k;
+        const approved = keyApproved || this.isApprovedKey(k);
+
+        // Allowlist mode: drop any field that is not approved and is not a
+        // container whose children need to be filtered individually.
+        if (this.mode === "allowlist" && !approved && !CONTAINER_KEYS.has(k)) {
+          redactedFields.push(fieldPath);
+          continue;
+        }
 
         // Key-based denylist match → redact the whole subtree.
         if (this.shouldRedactKey(k)) {
@@ -140,7 +159,6 @@ export class RedactionEngine {
           continue;
         }
 
-        const approved = keyApproved || this.isApprovedKey(k);
         result[k] = this.walk(v, fieldPath, redactedFields, approved);
       }
       return result;
@@ -157,14 +175,8 @@ export class RedactionEngine {
     value: string,
     path: string,
     redactedFields: string[],
-    keyApproved: boolean
+    _keyApproved: boolean
   ): string {
-    // Allowlist mode: anything not under an approved/structural key is masked.
-    if (this.mode === "allowlist" && !keyApproved) {
-      redactedFields.push(path);
-      return "[REDACTED]";
-    }
-
     if (this.valueRedaction) {
       const { value: out, redacted } = redactValueString(value, this.ipMode);
       if (redacted) redactedFields.push(path);
