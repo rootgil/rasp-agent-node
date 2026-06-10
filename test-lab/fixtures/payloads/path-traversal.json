@@ -1,0 +1,38 @@
+[
+  {
+    "description": "classic ../win.ini path (avoids /etc/passwd overlap with cmd injection)",
+    "request": {
+      "method": "GET",
+      "path": "/api/documents/../../../../windows/win.ini",
+      "query": {},
+      "headers": {},
+      "body": null
+    },
+    "expectedEventType": "path_traversal",
+    "expectedSeverity": "high"
+  },
+  {
+    "description": "URL-encoded traversal",
+    "request": {
+      "method": "GET",
+      "path": "/api/documents/%2e%2e%2f%2e%2e%2fsecret.txt",
+      "query": {},
+      "headers": {},
+      "body": null
+    },
+    "expectedEventType": "path_traversal",
+    "expectedSeverity": "high"
+  },
+  {
+    "description": "traversal in query param (dotdot-slash)",
+    "request": {
+      "method": "GET",
+      "path": "/api/files",
+      "query": { "file": "../../../secret.txt" },
+      "headers": {},
+      "body": null
+    },
+    "expectedEventType": "path_traversal",
+    "expectedSeverity": "high"
+  }
+]

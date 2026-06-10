@@ -29,3 +29,9 @@ Thumbs.db
 
 # Test coverage
 coverage/
+
+# Benchmark output (generated at runtime, not committed)
+benchmarks/output/
+
+# Test lab generated files
+test-lab/**/*.log

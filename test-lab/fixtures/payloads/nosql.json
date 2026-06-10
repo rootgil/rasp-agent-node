@@ -1,0 +1,26 @@
+[
+  {
+    "description": "MongoDB $where operator in body",
+    "request": {
+      "method": "POST",
+      "path": "/api/users/find",
+      "query": {},
+      "headers": { "content-type": "application/json" },
+      "body": { "filter": "$where: function() { return true; }" }
+    },
+    "expectedEventType": "nosql_injection",
+    "expectedSeverity": "high"
+  },
+  {
+    "description": "$gt operator key smuggling",
+    "request": {
+      "method": "POST",
+      "path": "/api/auth/login",
+      "query": {},
+      "headers": { "content-type": "application/json" },
+      "body": { "password": { "$gt": "" } }
+    },
+    "expectedEventType": "nosql_injection",
+    "expectedSeverity": "high"
+  }
+]

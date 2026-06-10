@@ -1,0 +1,62 @@
+[
+  {
+    "description": "UNION SELECT query param",
+    "request": {
+      "method": "GET",
+      "path": "/api/users/1",
+      "query": { "id": "1 UNION SELECT username,password FROM users--" },
+      "headers": {},
+      "body": null
+    },
+    "expectedEventType": "sql_injection",
+    "expectedSeverity": "critical"
+  },
+  {
+    "description": "tautology OR 1=1 query param",
+    "request": {
+      "method": "GET",
+      "path": "/api/users/1",
+      "query": { "id": "1' OR '1'='1" },
+      "headers": {},
+      "body": null
+    },
+    "expectedEventType": "sql_injection",
+    "expectedSeverity": "critical"
+  },
+  {
+    "description": "SLEEP blind injection",
+    "request": {
+      "method": "GET",
+      "path": "/api/users/1",
+      "query": { "id": "1 AND SLEEP(5)--" },
+      "headers": {},
+      "body": null
+    },
+    "expectedEventType": "sql_injection",
+    "expectedSeverity": "critical"
+  },
+  {
+    "description": "SQLi in POST body",
+    "request": {
+      "method": "POST",
+      "path": "/api/auth/login",
+      "query": {},
+      "headers": { "content-type": "application/json" },
+      "body": { "email": "admin@test.io", "password": "' OR '1'='1" }
+    },
+    "expectedEventType": "sql_injection",
+    "expectedSeverity": "critical"
+  },
+  {
+    "description": "inline comment evasion with complete comment block",
+    "request": {
+      "method": "GET",
+      "path": "/api/users/1",
+      "query": { "search": "admin'/*comment*/OR/**/1=1--" },
+      "headers": {},
+      "body": null
+    },
+    "expectedEventType": "sql_injection",
+    "expectedSeverity": "critical"
+  }
+]
