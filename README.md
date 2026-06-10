@@ -396,15 +396,60 @@ Discovery   → POST /v1/discovery (batched, 60s)
 
 ## Testing
 
+### Unit tests (every PR)
+
 ```bash
-pnpm test          # vitest run
-pnpm test:watch    # vitest watch
-pnpm typecheck     # tsc --noEmit
+npm run test:unit      # test/ — redaction, policy, hooks, self-protect
+npm run test:lab       # test-lab/integration/ — detectors, Express/Fastify/NestJS, DB hooks
+npm run typecheck      # tsc --noEmit
+npm run test:ci        # typecheck + unit + lab (same as CI)
 ```
 
-Test coverage areas: redaction engine, redaction patterns (email/card/SIN/IP), policy rejection, canonical bytes, custom rules, self-protect, hook integrity.
+### E2E and stress (nightly / on-demand)
 
-See `examples/banking-api/` for a full end-to-end test harness (Express app with intentionally vulnerable routes).
+```bash
+npm run test:e2e       # test-lab/e2e/ — banking-api via supertest + mock collector
+npm run test:stress    # test-lab/stress/ — 1000 concurrent requests, crash detection
+npm run test:compat    # test-lab/compat/ — Datadog + OTel coexistence (skipped if not installed)
+```
+
+### CI matrix
+
+| Trigger | Jobs |
+|---|---|
+| Every push / PR | Typecheck · unit · integration · build on Node 18, 20, 22 |
+| Nightly (02:00 UTC) | E2E, stress, k6 benchmarks, multi-OS Docker (Alpine/Debian), APM compat |
+
+### Performance benchmarks (k6)
+
+```bash
+# Requires k6 installed (https://k6.io/docs/get-started/installation/)
+# Start banking-api (port 3001 = baseline, 3000 = with agent), then:
+npm run benchmark:compare
+```
+
+Thresholds: > 1 % P99 overhead → warning, > 5 % → CI fail.
+
+### Test infrastructure layout
+
+```
+test-lab/
+├── fixtures/payloads/    # JSON attack payloads for all 10 detectors
+├── mocks/                # mock-collector, test-agent helpers, normalize-request
+├── integration/          # detector table tests, framework middleware, DB hooks
+├── e2e/                  # banking-api end-to-end via supertest
+├── stress/               # concurrency + crash detection
+└── compat/               # APM coexistence (Datadog, OTel, NR*, Dynatrace*)
+
+benchmarks/
+├── k6/                   # baseline.js + with-agent.js
+├── compare-p99.js        # delta calculator (1% warn / 5% fail)
+└── baselines/            # reference P99 JSON
+
+* = skipped in automated CI (requires licence or host-level install)
+```
+
+Test coverage areas: redaction engine, redaction patterns (email/card/SIN/IP), policy rejection, canonical bytes, custom rules, self-protect, hook integrity, all 10 detectors, Express/Fastify/NestJS middleware, DB hooks, BOLA, E2E attack scenarios, stress/crash, APM compat.
 
 ---
 
@@ -412,7 +457,7 @@ See `examples/banking-api/` for a full end-to-end test harness (Express app with
 
 - [`AGENTS.md`](./AGENTS.md) - architecture rules and security invariants for contributors
 - [`examples/banking-api/README.md`](./examples/banking-api/README.md) - local test lab with attack payloads
-- [Technical documentation](../rasp/docs/dossier-technique.html) - full architecture doc, integration guide, design decisions, and recommendations (French)
+- [`test-lab/compat/CONFLICTS.md`](./test-lab/compat/CONFLICTS.md) - APM compatibility matrix
 
 ---
 

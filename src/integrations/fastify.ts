@@ -32,15 +32,21 @@ import type { RaspAgent } from "../agent.js";
 import type { NormalizedRequest } from "../types.js";
 
 export function createFastifyPlugin(agent: RaspAgent) {
-  return async function raspPlugin(fastify: FastifyInstance): Promise<void> {
+  const raspPlugin = async function raspPlugin(fastify: FastifyInstance): Promise<void> {
     fastify.addHook(
       "onRequest",
       async (request: FastifyRequest, reply: FastifyReply): Promise<void> => {
         try {
+          const rawQuery = request.query as Record<string, unknown>;
+          const query =
+            rawQuery && Object.keys(rawQuery).length > 0
+              ? rawQuery
+              : parseQueryFromUrl(request.url);
+
           const normalized: NormalizedRequest = {
             method: request.method,
             path: request.url.split("?")[0] ?? request.url,
-            query: (request.query as Record<string, unknown>) ?? {},
+            query,
             headers: request.headers as Record<string, string | string[] | undefined>,
             body: request.body,
             sourceIp: extractSourceIp(request),
@@ -92,6 +98,16 @@ export function createFastifyPlugin(agent: RaspAgent) {
       }
     );
   };
+
+  // Mark as non-encapsulated so the onRequest/onResponse hooks apply to ALL
+  // routes in the Fastify instance, not only those registered inside this
+  // plugin scope. Equivalent to wrapping with `fastify-plugin` without
+  // adding a package dependency.
+  (raspPlugin as typeof raspPlugin & { [key: symbol]: boolean })[
+    Symbol.for("skip-override")
+  ] = true;
+
+  return raspPlugin;
 }
 
 /**
@@ -103,4 +119,25 @@ function extractSourceIp(req: FastifyRequest): string | undefined {
   if (typeof forwarded === "string") return forwarded.split(",")[0]?.trim();
   if (Array.isArray(forwarded)) return forwarded[0]?.split(",")[0]?.trim();
   return req.socket?.remoteAddress;
+}
+
+/**
+ * Parse query parameters from a raw URL string.
+ *
+ * Used as a fallback when `request.query` is not yet populated in the
+ * `onRequest` hook (Fastify v5 populates it lazily after route matching).
+ */
+function parseQueryFromUrl(url: string): Record<string, unknown> {
+  try {
+    const qIndex = url.indexOf("?");
+    if (qIndex === -1) return {};
+    const params = new URLSearchParams(url.slice(qIndex + 1));
+    const result: Record<string, string> = {};
+    for (const [k, v] of params.entries()) {
+      result[k] = v;
+    }
+    return result;
+  } catch {
+    return {};
+  }
 }

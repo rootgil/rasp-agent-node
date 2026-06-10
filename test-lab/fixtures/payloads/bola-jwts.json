@@ -1,0 +1,10 @@
+{
+  "user1": {
+    "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxIn0.demo",
+    "sub": "1"
+  },
+  "user2": {
+    "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIyIn0.demo",
+    "sub": "2"
+  }
+}

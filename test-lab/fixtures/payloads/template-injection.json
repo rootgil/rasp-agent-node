@@ -1,0 +1,26 @@
+[
+  {
+    "description": "Jinja2/Twig double-brace probe",
+    "request": {
+      "method": "GET",
+      "path": "/api/render",
+      "query": { "template": "{{7*7}}" },
+      "headers": {},
+      "body": null
+    },
+    "expectedEventType": "template_injection",
+    "expectedSeverity": "high"
+  },
+  {
+    "description": "ERB probe in body",
+    "request": {
+      "method": "POST",
+      "path": "/api/render",
+      "query": {},
+      "headers": { "content-type": "application/json" },
+      "body": { "content": "<%= 7*7 %>" }
+    },
+    "expectedEventType": "template_injection",
+    "expectedSeverity": "high"
+  }
+]

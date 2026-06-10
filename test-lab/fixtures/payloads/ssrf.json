@@ -1,0 +1,38 @@
+[
+  {
+    "description": "loopback HTTP SSRF (localhost)",
+    "request": {
+      "method": "GET",
+      "path": "/api/fetch",
+      "query": { "url": "http://localhost/admin" },
+      "headers": {},
+      "body": null
+    },
+    "expectedEventType": "ssrf",
+    "expectedSeverity": "high"
+  },
+  {
+    "description": "GCP metadata endpoint (hostname, avoids IP regex ambiguity)",
+    "request": {
+      "method": "GET",
+      "path": "/api/fetch",
+      "query": { "url": "http://metadata.google.internal/computeMetadata/v1/" },
+      "headers": {},
+      "body": null
+    },
+    "expectedEventType": "ssrf",
+    "expectedSeverity": "high"
+  },
+  {
+    "description": "file:// protocol (non-etc path to avoid cmd injection overlap)",
+    "request": {
+      "method": "GET",
+      "path": "/api/fetch",
+      "query": { "url": "file:///tmp/secret.txt" },
+      "headers": {},
+      "body": null
+    },
+    "expectedEventType": "ssrf",
+    "expectedSeverity": "high"
+  }
+]

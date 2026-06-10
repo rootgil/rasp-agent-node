@@ -1,0 +1,26 @@
+[
+  {
+    "description": "constructor.prototype key nesting with string leaf (flattenEntries requires string values)",
+    "request": {
+      "method": "POST",
+      "path": "/api/settings",
+      "query": {},
+      "headers": { "content-type": "application/json" },
+      "body": { "a": { "constructor": { "prototype": { "polluted": "yes" } } } }
+    },
+    "expectedEventType": "prototype_pollution",
+    "expectedSeverity": "critical"
+  },
+  {
+    "description": "serialised __proto__ in string value (value-scan path)",
+    "request": {
+      "method": "POST",
+      "path": "/api/settings",
+      "query": {},
+      "headers": { "content-type": "application/json" },
+      "body": { "data": "{\"__proto__\":{\"admin\":true}}" }
+    },
+    "expectedEventType": "prototype_pollution",
+    "expectedSeverity": "critical"
+  }
+]

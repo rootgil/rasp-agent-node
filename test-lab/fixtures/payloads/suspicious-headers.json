@@ -1,0 +1,26 @@
+[
+  {
+    "description": "CRLF injection in header value",
+    "request": {
+      "method": "GET",
+      "path": "/api/users",
+      "query": {},
+      "headers": { "x-custom": "value\r\nSet-Cookie: session=evil" },
+      "body": null
+    },
+    "expectedEventType": "header_injection",
+    "expectedSeverity": "high"
+  },
+  {
+    "description": "Host header injection with special chars",
+    "request": {
+      "method": "GET",
+      "path": "/api/users",
+      "query": {},
+      "headers": { "host": "evil.com/<script>" },
+      "body": null
+    },
+    "expectedEventType": "host_header_injection",
+    "expectedSeverity": "medium"
+  }
+]

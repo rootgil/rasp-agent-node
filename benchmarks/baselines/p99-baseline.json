@@ -1,0 +1,9 @@
+{
+  "_comment": "Reference P99 (with-agent, monitor mode) on main. Updated automatically by the nightly workflow after each successful benchmark run.",
+  "date": "2026-06-09",
+  "environment": "github-actions-ubuntu-latest",
+  "nodeVersion": "22",
+  "vus": 50,
+  "duration": "30s",
+  "p99": 18.511416469999993
+}

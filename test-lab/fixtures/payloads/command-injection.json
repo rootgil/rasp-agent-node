@@ -1,0 +1,38 @@
+[
+  {
+    "description": "semicolon chained command",
+    "request": {
+      "method": "GET",
+      "path": "/api/transactions",
+      "query": { "search": "ping 127.0.0.1;cat /etc/passwd" },
+      "headers": {},
+      "body": null
+    },
+    "expectedEventType": "command_injection",
+    "expectedSeverity": "critical"
+  },
+  {
+    "description": "backtick substitution",
+    "request": {
+      "method": "GET",
+      "path": "/api/transactions",
+      "query": { "search": "`id`" },
+      "headers": {},
+      "body": null
+    },
+    "expectedEventType": "command_injection",
+    "expectedSeverity": "critical"
+  },
+  {
+    "description": "dollar subshell",
+    "request": {
+      "method": "GET",
+      "path": "/api/exec",
+      "query": { "cmd": "$(whoami)" },
+      "headers": {},
+      "body": null
+    },
+    "expectedEventType": "command_injection",
+    "expectedSeverity": "critical"
+  }
+]

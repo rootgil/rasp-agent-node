@@ -1,0 +1,104 @@
+name: CI
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main]
+
+jobs:
+  ci:
+    name: "Typecheck · Test · Build (Node ${{ matrix.node-version }})"
+    runs-on: ubuntu-latest
+
+    strategy:
+      fail-fast: false
+      matrix:
+        node-version: [18, 20, 22]
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js ${{ matrix.node-version }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node-version }}
+          cache: "npm"
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Unit tests
+        run: npm run test:unit
+
+      - name: Integration tests (lab)
+        run: npm run test:lab
+        env:
+          NODE_ENV: test
+
+      - name: Build
+        run: npm run build
+
+  benchmark-regression:
+    name: "Perf regression gate (k6)"
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: "npm"
+
+      - name: Install k6
+        run: |
+          sudo gpg -k
+          sudo gpg --no-default-keyring \
+            --keyring /usr/share/keyrings/k6-archive-keyring.gpg \
+            --keyserver hkp://keyserver.ubuntu.com:80 \
+            --recv-keys C5AD17C747E3415A3642D57D77C6C491D6AC1D69
+          echo "deb [signed-by=/usr/share/keyrings/k6-archive-keyring.gpg] https://dl.k6.io/deb stable main" | \
+            sudo tee /etc/apt/sources.list.d/k6.list
+          sudo apt-get update
+          sudo apt-get install -y k6
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build banking-api
+        run: |
+          cd examples/banking-api
+          npm ci
+
+      - name: Start banking-api WITH agent (port 3000)
+        run: |
+          NODE_ENV=test RASP_MODE=monitor PORT=3000 \
+          node --import tsx/esm \
+            examples/banking-api/src/server.ts &
+          sleep 3
+
+      - name: Run with-agent benchmark
+        run: |
+          mkdir -p benchmarks/output
+          k6 run benchmarks/k6/with-agent.js \
+            --env BASE_URL=http://127.0.0.1:3000
+
+      - name: Compare against committed baseline — fail if regression > 5%
+        run: node benchmarks/compare-p99.js \
+          benchmarks/baselines/p99-baseline.json \
+          benchmarks/output/with-agent.json
+
+      - name: Upload benchmark results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: benchmark-regression-${{ github.sha }}
+          path: benchmarks/output/

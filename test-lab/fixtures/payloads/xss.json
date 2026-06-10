@@ -1,0 +1,38 @@
+[
+  {
+    "description": "script tag XSS in query",
+    "request": {
+      "method": "GET",
+      "path": "/api/transactions",
+      "query": { "search": "<script>alert(1)</script>" },
+      "headers": {},
+      "body": null
+    },
+    "expectedEventType": "xss",
+    "expectedSeverity": "high"
+  },
+  {
+    "description": "onerror attribute XSS",
+    "request": {
+      "method": "GET",
+      "path": "/api/search",
+      "query": { "q": "<img src=x onerror=alert(1)>" },
+      "headers": {},
+      "body": null
+    },
+    "expectedEventType": "xss",
+    "expectedSeverity": "high"
+  },
+  {
+    "description": "javascript: protocol",
+    "request": {
+      "method": "GET",
+      "path": "/api/redirect",
+      "query": { "url": "javascript:alert(document.cookie)" },
+      "headers": {},
+      "body": null
+    },
+    "expectedEventType": "xss",
+    "expectedSeverity": "high"
+  }
+]
