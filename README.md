@@ -399,8 +399,8 @@ Discovery   → POST /v1/discovery (batched, 60s)
 ### Unit tests (every PR)
 
 ```bash
-npm run test:unit      # test/ — redaction, policy, hooks, self-protect
-npm run test:lab       # test-lab/integration/ — detectors, Express/Fastify/NestJS, DB hooks
+npm run test:unit      # test/ - redaction, policy, hooks, self-protect
+npm run test:lab       # test-lab/integration/ - detectors, Express/Fastify/NestJS, DB hooks
 npm run typecheck      # tsc --noEmit
 npm run test:ci        # typecheck + unit + lab (same as CI)
 ```
@@ -408,9 +408,9 @@ npm run test:ci        # typecheck + unit + lab (same as CI)
 ### E2E and stress (nightly / on-demand)
 
 ```bash
-npm run test:e2e       # test-lab/e2e/ — banking-api via supertest + mock collector
-npm run test:stress    # test-lab/stress/ — 1000 concurrent requests, crash detection
-npm run test:compat    # test-lab/compat/ — Datadog + OTel coexistence (skipped if not installed)
+npm run test:e2e       # test-lab/e2e/ - banking-api via supertest + mock collector
+npm run test:stress    # test-lab/stress/ - 1000 concurrent requests, crash detection
+npm run test:compat    # test-lab/compat/ - Datadog + OTel coexistence (skipped if not installed)
 ```
 
 ### CI matrix

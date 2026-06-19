@@ -38,6 +38,17 @@ and the applied policy version so you can confirm what is enabled.
 
 Open **http://127.0.0.1:3000** in your browser.
 
+## Playground
+
+The web UI keeps the **original banking presets** (normal, attack, data privacy) and adds an editable request panel:
+
+- **Presets** — same malicious requests as before (`/api/auth/login`, `/api/users`, `/api/transactions`, `/api/documents`, BOLA with JWT, etc.)
+- **Editable request** — method, URL, JSON body
+- **Send / Clear** — replay with your edits; Shift+click a preset loads without sending
+- **Mode badge** — polls `/health` for MONITOR/BLOCK, channel, HMAC, policy version
+
+**Rules flow:** toggle rules ON in the dashboard, then click **Publish now** on the Rules page. The agent picks up the signed policy on the next heartbeat (~30s).
+
 ## Endpoints
 
 | Method | Path | Vulnerable to |

@@ -1,5 +1,5 @@
 /**
- * k6 benchmark — banking-api WITH RASP agent (monitor mode).
+ * k6 benchmark - banking-api WITH RASP agent (monitor mode).
  *
  * Used to measure the overhead introduced by the agent on the same endpoint
  * mix as the baseline. The compare-p99 script then computes the delta.
@@ -21,7 +21,7 @@ export const options = {
   duration: "30s",
   summaryTrendStats: ["p(99)"],
   thresholds: {
-    // Hard stop if P99 exceeds 2 s (catastrophic — agent should not add that much)
+    // Hard stop if P99 exceeds 2 s (catastrophic - agent should not add that much)
     http_req_duration: ["p(99)<2000"],
   },
 };

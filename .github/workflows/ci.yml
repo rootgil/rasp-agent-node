@@ -91,7 +91,7 @@ jobs:
           k6 run benchmarks/k6/with-agent.js \
             --env BASE_URL=http://127.0.0.1:3000
 
-      - name: Compare against committed baseline — fail if regression > 5%
+      - name: Compare against committed baseline - fail if regression > 5%
         run: node benchmarks/compare-p99.js \
           benchmarks/baselines/p99-baseline.json \
           benchmarks/output/with-agent.json

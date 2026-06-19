@@ -1,5 +1,5 @@
 /**
- * k6 baseline benchmark — banking-api WITHOUT RASP agent.
+ * k6 baseline benchmark - banking-api WITHOUT RASP agent.
  *
  * Used to capture the reference P99 latency of the application alone.
  * Run against banking-api started with RASP_ENABLED=false.
@@ -18,7 +18,7 @@ export const options = {
   duration: "30s",
   summaryTrendStats: ["p(99)"],
   thresholds: {
-    // Baseline passes unconditionally — only used as reference
+    // Baseline passes unconditionally - only used as reference
     http_req_duration: ["p(99)<2000"],
   },
 };

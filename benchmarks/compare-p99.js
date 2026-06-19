@@ -66,7 +66,7 @@ function main() {
       `WARN: agent P99 overhead is ${deltaPercent}% (> ${WARN_THRESHOLD * 100}% threshold). ` +
       "Manual review recommended."
     );
-    // exit 0 — warning only
+    // exit 0 - warning only
   } else {
     console.log(`OK: overhead within ${WARN_THRESHOLD * 100}% threshold.`);
   }

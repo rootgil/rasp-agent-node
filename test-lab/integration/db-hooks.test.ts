@@ -43,7 +43,7 @@ describe("DB hook installation via agent (instrumentDb: true)", () => {
     const count = installedHookCount();
     const tampered = verifyHookIntegrity();
     expect(tampered).toEqual([]);
-    // count may be 0 if no drivers are installed — that's acceptable
+    // count may be 0 if no drivers are installed - that's acceptable
     expect(count).toBeGreaterThanOrEqual(0);
   });
 
@@ -52,7 +52,7 @@ describe("DB hook installation via agent (instrumentDb: true)", () => {
   });
 });
 
-describe("DB hook integrity — tamper detection", () => {
+describe("DB hook integrity - tamper detection", () => {
   beforeEach(() => {
     __resetInstrumentationForTests();
   });

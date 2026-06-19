@@ -23,7 +23,7 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: E2E — banking-api
+      - name: E2E - banking-api
         run: npm run test:e2e
         env:
           NODE_ENV: test
@@ -64,7 +64,7 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Build banking-api (baseline — no RASP)
+      - name: Build banking-api (baseline - no RASP)
         run: |
           cd examples/banking-api
           npm ci
@@ -94,7 +94,7 @@ jobs:
           k6 run benchmarks/k6/with-agent.js \
             --env BASE_URL=http://127.0.0.1:3000
 
-      - name: Compare P99 — fail if overhead > 5%
+      - name: Compare P99 - fail if overhead > 5%
         run: node benchmarks/compare-p99.js \
           benchmarks/output/baseline.json \
           benchmarks/output/with-agent.json

@@ -2,7 +2,7 @@
  * Integration tests for the NestJS middleware.
  *
  * NestJS middleware is Express-compatible, so we can test it via a minimal
- * Express app wired with the NestJS middleware class instance — no DI
+ * Express app wired with the NestJS middleware class instance - no DI
  * container needed for these unit-level integration tests.
  */
 import { describe, it, expect, beforeAll, afterAll } from "vitest";
@@ -32,7 +32,7 @@ function buildNestApp(mode: "monitor" | "block") {
   return { app, agent };
 }
 
-describe("NestJS middleware — monitor mode", () => {
+describe("NestJS middleware - monitor mode", () => {
   let app: ReturnType<typeof buildNestApp>["app"];
   let agent: RaspAgent;
 
@@ -41,18 +41,18 @@ describe("NestJS middleware — monitor mode", () => {
   });
   afterAll(async () => { await agent.stop(); });
 
-  it("passes clean request — HTTP 200", async () => {
+  it("passes clean request - HTTP 200", async () => {
     const res = await supertest(app).get("/health");
     expect(res.status).toBe(200);
   });
 
-  it("passes SQLi in monitor mode — HTTP 200", async () => {
+  it("passes SQLi in monitor mode - HTTP 200", async () => {
     const res = await supertest(app).get("/echo?id=1' OR '1'='1");
     expect(res.status).toBe(200);
   });
 });
 
-describe("NestJS middleware — block mode", () => {
+describe("NestJS middleware - block mode", () => {
   let app: ReturnType<typeof buildNestApp>["app"];
   let agent: RaspAgent;
 
@@ -61,20 +61,20 @@ describe("NestJS middleware — block mode", () => {
   });
   afterAll(async () => { await agent.stop(); });
 
-  it("blocks SQLi — HTTP 403 with eventType", async () => {
+  it("blocks SQLi - HTTP 403 with eventType", async () => {
     const res = await supertest(app).get("/echo?id=1' OR '1'='1");
     expect(res.status).toBe(403);
     expect(res.body.error).toMatch(/blocked/i);
     expect(res.body.eventType).toBe("sql_injection");
   });
 
-  it("blocks command injection — HTTP 403", async () => {
+  it("blocks command injection - HTTP 403", async () => {
     const res = await supertest(app).get("/echo?cmd=ping+127.0.0.1%3Bcat+/etc/passwd");
     expect(res.status).toBe(403);
     expect(res.body.eventType).toBe("command_injection");
   });
 
-  it("blocks XSS in POST body — HTTP 403", async () => {
+  it("blocks XSS in POST body - HTTP 403", async () => {
     const res = await supertest(app)
       .post("/echo")
       .send({ comment: "<script>alert(1)</script>" })
@@ -83,7 +83,7 @@ describe("NestJS middleware — block mode", () => {
     expect(res.body.eventType).toBe("xss");
   });
 
-  it("passes clean POST — HTTP 200", async () => {
+  it("passes clean POST - HTTP 200", async () => {
     const res = await supertest(app)
       .post("/echo")
       .send({ name: "Alice", age: 30 })

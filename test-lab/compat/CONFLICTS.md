@@ -29,7 +29,7 @@ Updated after each nightly CI run. Manual entries marked with *.
 
 ## Known workarounds
 
-_None yet — table will be populated after first nightly runs._
+_None yet - table will be populated after first nightly runs._
 
 ## Testing methodology
 
@@ -37,7 +37,7 @@ For APMs tested in nightly CI:
 1. APM initialised first (worst-case ordering for RASP hook conflicts).
 2. RASP `instrumentDatabaseDrivers()` called after APM init.
 3. `verifyHookIntegrity()` called to check for hook collisions.
-4. 10 attack payloads sent through RASP middleware — all must be detected.
+4. 10 attack payloads sent through RASP middleware - all must be detected.
 5. Memory measured via `process.memoryUsage().rss` before and after.
 
 For manual entries (New Relic, Dynatrace): follow the instructions in the

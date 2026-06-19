@@ -170,6 +170,96 @@
     }
     .status-dot.ok      { background: #34d399; }
     .status-dot.blocked { background: #f87171; }
+
+    .editor-card {
+      max-width: 1280px;
+      margin: 0 auto 1.25rem;
+      background: #1e293b;
+      border: 1px solid #334155;
+      border-radius: .75rem;
+      padding: 1.25rem;
+    }
+    .editor-card h2 {
+      font-size: .85rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: .07em;
+      color: #a5b4fc;
+      margin-bottom: .5rem;
+    }
+    .editor-card .note { margin-bottom: .75rem; }
+    .editor-row {
+      display: flex;
+      gap: .5rem;
+      align-items: center;
+      margin-bottom: .6rem;
+      flex-wrap: nowrap;
+    }
+    #req-method {
+      flex-shrink: 0;
+      padding: .45rem .6rem;
+      border-radius: .4rem;
+      border: 1px solid #334155;
+      background: #0f1117;
+      color: #e2e8f0;
+      font-size: .8rem;
+      font-weight: 600;
+    }
+    #req-url {
+      flex: 1;
+      min-width: 0;
+      padding: .45rem .7rem;
+      border-radius: .4rem;
+      border: 1px solid #334155;
+      background: #0f1117;
+      color: #e2e8f0;
+      font-family: "Fira Code", "Cascadia Code", monospace;
+      font-size: .78rem;
+    }
+    #req-url:focus, #req-body:focus { outline: none; border-color: #6366f1; }
+    .editor-label {
+      font-size: .7rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: .06em;
+      color: #64748b;
+      margin-bottom: .3rem;
+    }
+    #req-body {
+      width: 100%;
+      padding: .55rem .7rem;
+      border-radius: .4rem;
+      border: 1px solid #334155;
+      background: #0f1117;
+      color: #e2e8f0;
+      font-family: "Fira Code", "Cascadia Code", monospace;
+      font-size: .78rem;
+      line-height: 1.45;
+      resize: vertical;
+      margin-bottom: .6rem;
+      min-height: 72px;
+    }
+    .editor-row .action-btn {
+      width: auto;
+      flex-shrink: 0;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      white-space: nowrap;
+    }
+    .action-btn {
+      padding: .45rem .9rem;
+      border-radius: .4rem;
+      border: 1px solid #334155;
+      background: #0f1117;
+      color: #e2e8f0;
+      font-size: .78rem;
+      font-weight: 600;
+      cursor: pointer;
+    }
+    .action-btn.primary { background: #6366f1; border-color: #6366f1; color: #fff; }
+    .action-btn.primary:hover { background: #4f46e5; }
+    .action-btn:hover { background: #1e293b; }
   </style>
 </head>
 <body>
@@ -178,10 +268,11 @@
   <h1>Banking API - RASP Test Lab</h1>
   <span class="tag">DEV ONLY - DO NOT DEPLOY</span>
   <p>
-    Click a button to send a request to the local server. The RASP agent inspects
-    every request before the route handler runs. In <strong>monitor</strong> mode the
-    request passes through and is logged. In <strong>block</strong> mode a detected
-    attack returns <code>403</code>.
+    Click a preset below to send a request, or edit the method, URL and body
+    in the request panel and click <strong>Send</strong>. The RASP agent inspects every
+    request before the route handler runs. In <strong>monitor</strong> mode the request
+    passes through and is logged. In <strong>block</strong> mode a detected attack
+    returns <code>403</code>.
   </p>
   <div class="mode-badge">
     Mode: <strong id="mode-label">loading…</strong>
@@ -197,6 +288,28 @@
     Collector: <strong id="collector-label">loading…</strong>
   </div>
 </header>
+
+<div class="editor-card">
+  <h2>Request (editable)</h2>
+  <p class="note">
+    Preset buttons load and send immediately. Modify any field here and click Send to replay
+    with your changes. Shift+click a preset loads it without sending.
+  </p>
+  <div class="editor-row">
+    <select id="req-method">
+      <option value="GET">GET</option>
+      <option value="POST">POST</option>
+      <option value="PUT">PUT</option>
+      <option value="PATCH">PATCH</option>
+      <option value="DELETE">DELETE</option>
+    </select>
+    <input id="req-url" type="text" placeholder="/api/users/1?id=1' OR 1=1--" spellcheck="false" />
+    <button type="button" class="action-btn primary" onclick="sendFromEditor()">Send</button>
+    <button type="button" class="action-btn" onclick="clearResult()">Clear</button>
+  </div>
+  <div class="editor-label">Body (JSON — POST / PUT / PATCH)</div>
+  <textarea id="req-body" placeholder='{"email":"admin@acme.io","password":"'"'"' OR '"'"'1'"'"'='"'"'1"}'></textarea>
+</div>
 
 <div class="page-layout">
 <div class="grid">
@@ -501,19 +614,35 @@
     collectorMeta ? collectorMeta.getAttribute('content') : 'collector.rasp.dev';
 
   async function send(method, url, body) {
-    return sendWithHeaders(method, url, body, {});
+    const ev = window.event;
+    if (ev && ev.shiftKey) {
+      populateEditor(method, url, body);
+      return;
+    }
+    populateEditor(method, url, body);
+    return sendWithHeaders(method, url, body, {}, true);
   }
 
-  async function sendWithHeaders(method, url, body, extraHeaders) {
+  async function sendWithHeaders(method, url, body, extraHeaders, skipPopulate) {
+    const ev = window.event;
+    if (ev && ev.shiftKey && skipPopulate !== true) {
+      populateEditor(method, url, body);
+      return;
+    }
+    if (skipPopulate !== true) populateEditor(method, url, body);
+
     const el = document.getElementById('result');
     el.className = 'loading';
     el.textContent = `${method} ${url}\n\nSending…`;
 
     const opts = {
       method,
-      headers: { 'Content-Type': 'application/json', ...extraHeaders },
+      headers: { ...extraHeaders },
     };
-    if (body) opts.body = JSON.stringify(body);
+    if (body && ['POST', 'PUT', 'PATCH'].includes(method)) {
+      opts.headers['Content-Type'] = 'application/json';
+      opts.body = JSON.stringify(body);
+    }
 
     const t0 = Date.now();
     try {
@@ -539,6 +668,33 @@
       el.className = '';
       el.textContent = `Network error: ${err.message}`;
     }
+  }
+
+  function populateEditor(method, url, body) {
+    document.getElementById('req-method').value = method;
+    document.getElementById('req-url').value = url;
+    document.getElementById('req-body').value = body ? JSON.stringify(body, null, 2) : '';
+  }
+
+  function sendFromEditor() {
+    const method = document.getElementById('req-method').value;
+    const url = document.getElementById('req-url').value.trim();
+    if (!url) return;
+
+    let body = null;
+    const bodyText = document.getElementById('req-body').value.trim();
+    if (bodyText && ['POST', 'PUT', 'PATCH'].includes(method)) {
+      try { body = JSON.parse(bodyText); }
+      catch { alert('Invalid JSON in body field'); return; }
+    }
+
+    return sendWithHeaders(method, url, body, {}, true);
+  }
+
+  function clearResult() {
+    const el = document.getElementById('result');
+    el.className = '';
+    el.textContent = 'Click a button above to send a request…';
   }
 </script>
 </body>

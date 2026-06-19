@@ -17,7 +17,7 @@
  */
 import { describe, it } from "vitest";
 
-describe.skip("RASP agent + Dynatrace OneAgent coexistence (manual — requires host-level installation)", () => {
+describe.skip("RASP agent + Dynatrace OneAgent coexistence (manual - requires host-level installation)", () => {
   it("Dynatrace and RASP agent both start without error", () => {
     // Manual: start process with OneAgent attached, then new RaspAgent({ ... })
   });

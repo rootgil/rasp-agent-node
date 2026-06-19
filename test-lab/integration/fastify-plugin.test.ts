@@ -33,7 +33,7 @@ async function buildFastifyApp(mode: "monitor" | "block") {
   return { fastify, agent, base };
 }
 
-describe("Fastify plugin — monitor mode", () => {
+describe("Fastify plugin - monitor mode", () => {
   let fastify: FastifyInstance;
   let agent: RaspAgent;
   let base: string;
@@ -46,18 +46,18 @@ describe("Fastify plugin — monitor mode", () => {
     await agent.stop();
   });
 
-  it("passes clean request — HTTP 200", async () => {
+  it("passes clean request - HTTP 200", async () => {
     const res = await supertest(base).get("/health");
     expect(res.status).toBe(200);
   });
 
-  it("passes SQLi in monitor mode — HTTP 200", async () => {
+  it("passes SQLi in monitor mode - HTTP 200", async () => {
     const res = await supertest(base).get("/echo?id=1' OR '1'='1");
     expect(res.status).toBe(200);
   });
 });
 
-describe("Fastify plugin — block mode", () => {
+describe("Fastify plugin - block mode", () => {
   let fastify: FastifyInstance;
   let agent: RaspAgent;
   let base: string;
@@ -70,7 +70,7 @@ describe("Fastify plugin — block mode", () => {
     await agent.stop();
   });
 
-  it("blocks SQLi — HTTP 403 with eventType", async () => {
+  it("blocks SQLi - HTTP 403 with eventType", async () => {
     const res = await supertest(base)
       .get("/echo")
       .query({ id: "1 UNION SELECT username,password FROM users--" });
@@ -78,7 +78,7 @@ describe("Fastify plugin — block mode", () => {
     expect(res.body.eventType).toBe("sql_injection");
   });
 
-  it("blocks path traversal — HTTP 403", async () => {
+  it("blocks path traversal - HTTP 403", async () => {
     const res = await supertest(base)
       .get("/echo")
       .query({ file: "../../../secret.txt" });
@@ -86,14 +86,14 @@ describe("Fastify plugin — block mode", () => {
     expect(res.body.eventType).toBe("path_traversal");
   });
 
-  it("blocks XSS — HTTP 403", async () => {
+  it("blocks XSS - HTTP 403", async () => {
     const res = await supertest(base)
       .get("/echo")
       .query({ search: "<script>alert(1)</script>" });
     expect(res.status).toBe(403);
   });
 
-  it("passes clean request — HTTP 200", async () => {
+  it("passes clean request - HTTP 200", async () => {
     const res = await supertest(base).get("/health");
     expect(res.status).toBe(200);
   });

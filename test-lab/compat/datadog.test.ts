@@ -6,7 +6,7 @@
  *  2. DB hooks installed by the RASP agent are not overwritten by dd-trace.
  *  3. The RASP agent still detects attacks after dd-trace is active.
  *
- * dd-trace is a devDependency only — this test is skipped when the package
+ * dd-trace is a devDependency only - this test is skipped when the package
  * is not installed (nightly CI installs it; regular CI does not).
  */
 import { describe, it, expect, beforeAll, afterAll } from "vitest";
@@ -93,7 +93,7 @@ describe("RASP agent + Datadog dd-trace coexistence", () => {
     expect(agent.inspect(req)).toBeNull();
   });
 
-  it.skip("dd-trace not installed — skipping compatibility tests (install dd-trace as devDep to enable)", () => {
-    // Intentionally empty — marker for CI logs
+  it.skip("dd-trace not installed - skipping compatibility tests (install dd-trace as devDep to enable)", () => {
+    // Intentionally empty - marker for CI logs
   });
 });

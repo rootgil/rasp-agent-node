@@ -10,6 +10,7 @@ import { fileURLToPath } from "node:url";
 import { createExpressMiddleware } from "@queno/agent-node";
 import type { RaspAgent } from "@queno/agent-node";
 
+import { requestLogger } from "./logger.js";
 import authRouter         from "./routes/auth.js";
 import usersRouter        from "./routes/users.js";
 import accountsRouter     from "./routes/accounts.js";
@@ -20,9 +21,9 @@ import adminRouter        from "./routes/admin.js";
 /**
  * Build and return the configured Express application.
  * When `agent` is provided the RASP middleware is registered on every request.
- * When omitted the app runs without any RASP instrumentation — used for the
+ * When omitted the app runs without any RASP instrumentation - used for the
  * performance baseline so the benchmark measures a clean reference.
- * Does NOT call app.listen() — the caller decides whether to listen or use
+ * Does NOT call app.listen() - the caller decides whether to listen or use
  * supertest directly.
  */
 export function createBankingApp(agent?: RaspAgent): Express {
@@ -35,6 +36,8 @@ export function createBankingApp(agent?: RaspAgent): Express {
 
   app.use(express.json({ limit: "64kb" }));
   app.use(express.urlencoded({ extended: false, limit: "64kb" }));
+
+  app.use(requestLogger);
 
   if (agent) {
     app.use(createExpressMiddleware(agent));

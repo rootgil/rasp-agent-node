@@ -14,6 +14,7 @@
 import "dotenv/config";
 import { RaspAgent } from "@queno/agent-node";
 import { createBankingApp } from "./app.js";
+import { printBanner } from "./logger.js";
 
 // ── Dev-only guard ────────────────────────────────────────────────────────────
 if (process.env["NODE_ENV"] === "production") {
@@ -51,23 +52,19 @@ const PORT = Number(process.env["PORT"]) || 3000;
 const HOST = "127.0.0.1";
 
 const server = app.listen(PORT, HOST, () => {
-  console.log("");
-  console.log("  ⚠  RASP EXAMPLE APP - DEV ONLY. DO NOT DEPLOY.");
-  console.log(`     Listening on http://${HOST}:${PORT}`);
   if (agent) {
-    console.log(`     RASP boot mode: ${agent.cfg.mode} (effective mode syncs via heartbeat/policy)`);
-    console.log(`     Channel     : ${agent.cfg.channel}`);
-    console.log(`     HMAC signing: ${agent.cfg.hmacSecret ? "on" : "off"}`);
-    console.log(`     Self-protect: ${agent.cfg.selfProtect ? "on" : "off"}`);
-    console.log(`     Policy ver. : ${agent.policyVersion}`);
-    console.log(`     Collector   : ${process.env["RASP_COLLECTOR_URL"] ?? "https://collector.rasp.dev"}`);
-    console.log(`     Audit log   : ${agent.cfg.auditLogPath}`);
+    printBanner(PORT, HOST, agent.cfg.mode);
+    console.log(`  RASP boot mode: ${agent.cfg.mode} (effective mode syncs via heartbeat/policy)`);
+    console.log(`  Channel        : ${agent.cfg.channel}`);
+    console.log(`  HMAC signing   : ${agent.cfg.hmacSecret ? "on" : "off"}`);
+    console.log(`  Self-protect   : ${agent.cfg.selfProtect ? "on" : "off"}`);
+    console.log(`  Policy ver.    : ${agent.policyVersion ?? "none"}`);
+    console.log(`  Collector      : ${process.env["RASP_COLLECTOR_URL"] ?? "https://collector.rasp.dev"}`);
+    console.log(`  Audit log      : ${agent.cfg.auditLogPath}`);
   } else {
-    console.log("     RASP agent  : DISABLED (baseline mode — no instrumentation)");
+    printBanner(PORT, HOST, "disabled");
+    console.log("  RASP agent  : DISABLED (baseline mode - no instrumentation)");
   }
-  console.log("");
-  console.log(`     Open http://${HOST}:${PORT} in your browser to start testing.`);
-  console.log("");
 });
 
 // ── Graceful shutdown ─────────────────────────────────────────────────────────

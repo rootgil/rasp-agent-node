@@ -31,7 +31,7 @@ function buildApp(mode: "monitor" | "block") {
   return { app, agent };
 }
 
-describe("Express middleware — monitor mode", () => {
+describe("Express middleware - monitor mode", () => {
   let app: ReturnType<typeof buildApp>["app"];
   let agent: RaspAgent;
 
@@ -40,23 +40,23 @@ describe("Express middleware — monitor mode", () => {
   });
   afterAll(async () => { await agent.stop(); });
 
-  it("passes clean request — HTTP 200", async () => {
+  it("passes clean request - HTTP 200", async () => {
     const res = await supertest(app).get("/health");
     expect(res.status).toBe(200);
   });
 
-  it("passes SQLi request in monitor mode — HTTP 200", async () => {
+  it("passes SQLi request in monitor mode - HTTP 200", async () => {
     const res = await supertest(app).get("/echo?id=1' OR '1'='1");
     expect(res.status).toBe(200);
   });
 
-  it("passes path traversal in monitor mode — HTTP 200", async () => {
+  it("passes path traversal in monitor mode - HTTP 200", async () => {
     const res = await supertest(app).get("/echo?file=../../../secret.txt");
     expect(res.status).toBe(200);
   });
 });
 
-describe("Express middleware — block mode", () => {
+describe("Express middleware - block mode", () => {
   let app: ReturnType<typeof buildApp>["app"];
   let agent: RaspAgent;
 
@@ -65,38 +65,38 @@ describe("Express middleware — block mode", () => {
   });
   afterAll(async () => { await agent.stop(); });
 
-  it("blocks SQLi — HTTP 403 with eventType", async () => {
+  it("blocks SQLi - HTTP 403 with eventType", async () => {
     const res = await supertest(app).get("/echo?id=1' OR '1'='1");
     expect(res.status).toBe(403);
     expect(res.body.error).toMatch(/blocked/i);
     expect(res.body.eventType).toBe("sql_injection");
   });
 
-  it("blocks path traversal — HTTP 403", async () => {
+  it("blocks path traversal - HTTP 403", async () => {
     const res = await supertest(app).get("/echo?file=../../../secret.txt");
     expect(res.status).toBe(403);
     expect(res.body.eventType).toBe("path_traversal");
   });
 
-  it("blocks XSS — HTTP 403", async () => {
+  it("blocks XSS - HTTP 403", async () => {
     const res = await supertest(app)
       .get("/echo?search=%3Cscript%3Ealert(1)%3C%2Fscript%3E");
     expect(res.status).toBe(403);
     expect(res.body.eventType).toBe("xss");
   });
 
-  it("blocks command injection — HTTP 403", async () => {
+  it("blocks command injection - HTTP 403", async () => {
     const res = await supertest(app).get("/echo?cmd=ping+127.0.0.1%3Bcat+/etc/passwd");
     expect(res.status).toBe(403);
     expect(res.body.eventType).toBe("command_injection");
   });
 
-  it("passes clean request — HTTP 200", async () => {
+  it("passes clean request - HTTP 200", async () => {
     const res = await supertest(app).get("/health");
     expect(res.status).toBe(200);
   });
 
-  it("blocks SQLi in POST body — HTTP 403", async () => {
+  it("blocks SQLi in POST body - HTTP 403", async () => {
     const res = await supertest(app)
       .post("/echo")
       .send({ email: "admin", password: "' OR '1'='1" })
@@ -106,7 +106,7 @@ describe("Express middleware — block mode", () => {
   });
 });
 
-describe("Express middleware — event enqueue in monitor mode", () => {
+describe("Express middleware - event enqueue in monitor mode", () => {
   it("enqueues event on detection without blocking", async () => {
     const agent = new RaspAgent({
       apiKey: "test_key",

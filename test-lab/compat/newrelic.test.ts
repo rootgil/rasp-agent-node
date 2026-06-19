@@ -15,7 +15,7 @@
  */
 import { describe, it } from "vitest";
 
-describe.skip("RASP agent + New Relic coexistence (manual — requires licence key)", () => {
+describe.skip("RASP agent + New Relic coexistence (manual - requires licence key)", () => {
   it("New Relic and RASP agent both start without error", () => {
     // Manual: require('newrelic'); then new RaspAgent({ ... })
   });

@@ -3,7 +3,7 @@
  *
  * Each test loads fixture payloads from test-lab/fixtures/payloads/ and
  * verifies that agent.inspect() returns the expected eventType and severity.
- * No HTTP, no collector, no async — purely synchronous.
+ * No HTTP, no collector, no async - purely synchronous.
  */
 import { describe, it, expect, beforeEach, afterAll } from "vitest";
 import { RaspAgent } from "../../src/agent.js";
@@ -105,7 +105,7 @@ describe("BOLA detector", () => {
   });
 });
 
-describe("Clean requests — no false positives", () => {
+describe("Clean requests - no false positives", () => {
   it("does not flag a normal GET request", () => {
     const req = normalizeRequest({ method: "GET", path: "/api/health" });
     expect(agent.inspect(req)).toBeNull();

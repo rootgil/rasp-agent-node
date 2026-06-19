@@ -1,4 +1,4 @@
-# Testing — agent-node
+# Testing - agent-node
 
 Manual test commands to run locally when the CI fails or when you want to re-run a specific suite.
 
@@ -7,8 +7,8 @@ Manual test commands to run locally when the CI fails or when you want to re-run
 ## Prerequisites
 
 - Node ≥ 18
-- `npm ci` — install dependencies
-- k6 — only required for benchmarks
+- `npm ci` - install dependencies
+- k6 - only required for benchmarks
 
 ---
 
@@ -45,13 +45,13 @@ npm run build
 ## Optional suites (not run by CI)
 
 ```sh
-# E2E — test-lab/e2e/banking-api.test.ts
+# E2E - test-lab/e2e/banking-api.test.ts
 npm run test:e2e
 
-# Stress — test-lab/stress/crash.test.ts
+# Stress - test-lab/stress/crash.test.ts
 npm run test:stress
 
-# Compat — Datadog, Dynatrace, NewRelic, OpenTelemetry
+# Compat - Datadog, Dynatrace, NewRelic, OpenTelemetry
 npm run test:compat
 ```
 
@@ -90,7 +90,7 @@ npm run test:watch
 
 ---
 
-## Benchmark — p99 regression gate
+## Benchmark - p99 regression gate
 
 Reproduces the `benchmark-regression` CI job.
 
@@ -121,7 +121,7 @@ node benchmarks/compare-p99.js \
 - overhead `> 1%` → WARN (exit 0)
 - overhead `> 5%` → FAIL (exit 1)
 
-### Optional — full local comparison with a fresh baseline
+### Optional - full local comparison with a fresh baseline
 
 Start the app without the agent, capture a fresh baseline, then compare both runs:
 

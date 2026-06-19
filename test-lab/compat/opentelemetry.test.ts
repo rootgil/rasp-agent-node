@@ -96,7 +96,7 @@ describe("RASP agent + OpenTelemetry coexistence", () => {
     expect(agent.inspect(req)).toBeNull();
   });
 
-  it.skip("OTel SDK not installed — skipping compatibility tests (install @opentelemetry/sdk-node to enable)", () => {
+  it.skip("OTel SDK not installed - skipping compatibility tests (install @opentelemetry/sdk-node to enable)", () => {
     // Intentionally empty
   });
 });

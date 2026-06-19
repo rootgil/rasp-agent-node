@@ -48,7 +48,7 @@ function installCrashGuards(fails: string[]): { remove: () => void } {
 
 // ── Tests ──────────────────────────────────────────────────────────────────
 
-describe("Concurrency stress — 1000 concurrent inspect() calls", () => {
+describe("Concurrency stress - 1000 concurrent inspect() calls", () => {
   let agent: RaspAgent;
   const crashLog: string[] = [];
   let guards: { remove: () => void };
@@ -81,7 +81,7 @@ describe("Concurrency stress — 1000 concurrent inspect() calls", () => {
     expect(crashLog).toHaveLength(0);
   });
 
-  it("mix of safe and attack requests — no undefined results", () => {
+  it("mix of safe and attack requests - no undefined results", () => {
     const safeReq = normalizeRequest({ method: "GET", path: "/health" });
     const attackReq = normalizeRequest({
       method: "GET",
@@ -172,7 +172,7 @@ describe("Malformed / adversarial request bodies", () => {
   });
 });
 
-describe("Policy churn — 50 rapid config cycles", () => {
+describe("Policy churn - 50 rapid config cycles", () => {
   let agent: RaspAgent;
   const crashLog: string[] = [];
   let guards: { remove: () => void };
@@ -195,9 +195,9 @@ describe("Policy churn — 50 rapid config cycles", () => {
     });
 
     for (let i = 0; i < 50; i++) {
-      // Inspect clean request — should not throw
+      // Inspect clean request - should not throw
       expect(() => agent.inspect(req)).not.toThrow();
-      // Access mode property — should not throw
+      // Access mode property - should not throw
       expect(["monitor", "block"]).toContain(agent.mode);
     }
 
@@ -205,7 +205,7 @@ describe("Policy churn — 50 rapid config cycles", () => {
   });
 });
 
-describe("Agent lifecycle — start/stop resilience", () => {
+describe("Agent lifecycle - start/stop resilience", () => {
   it("calling stop() multiple times does not throw", async () => {
     const agent = buildAgent();
     agent.start();
