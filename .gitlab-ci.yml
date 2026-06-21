@@ -118,10 +118,10 @@ security-audit:
   variables:
     # Zero epoch makes any tool that embeds timestamps deterministic.
     SOURCE_DATE_EPOCH: "0"
-    NODE_ENV: production
   script:
+    # Install devDependencies (typescript) — NODE_ENV=production skips them in npm ci.
     - npm ci
-    - npm run build
+    - SOURCE_DATE_EPOCH=0 NODE_ENV=production npm run build
     - find dist -type f | sort | xargs sha256sum > "${CI_JOB_NAME}.sha256"
     - echo "=== Build hash manifest (${CI_JOB_NAME}) ==="
     - cat "${CI_JOB_NAME}.sha256"
@@ -221,7 +221,8 @@ publish:
   script:
     - |
       printf '%s\n' "//registry.npmjs.org/:_authToken=${NPM_TOKEN}" > .npmrc
-    - npm publish --provenance --access public
+    - TARBALL=$(ls *.tgz)
+    - npm publish "${TARBALL}" --provenance --access public
     # Create a GitLab Release with the SBOM attached
     - >
       curl --fail --silent --show-error
