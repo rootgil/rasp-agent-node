@@ -151,3 +151,5 @@ Run after a successful with-agent benchmark to promote the current p99 as the ne
 node benchmarks/update-baseline.js
 # then commit benchmarks/baselines/p99-baseline.json
 ```
+
+test/ci-benchmark 1
