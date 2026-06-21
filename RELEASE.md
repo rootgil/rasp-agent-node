@@ -1,16 +1,14 @@
-# Release — E.1.3 SBOM + GPG (sans Sigstore)
+# Release
 
-Tag `vX.Y.Z` → build, verify, SBOM, signature GPG, publish npm.
+Tag `vX.Y.Z` → build, verify, SBOM, publish npm.
 
-## Variables CI (Protected + Masked, tags `v*`)
+## Variables CI
 
 | Variable | Description |
 |----------|-------------|
-| `NPM_TOKEN` | Token npm publish |
-| `GPG_PRIVATE_KEY` | `gpg --armor --export-secret-keys KEY_ID` |
-| `GPG_PASSPHRASE` | Optionnel |
+| `NPM_TOKEN` | Token npm (Protected + Masked, tags `v*`) |
 
-Runner **oriso-runner-01** : `gpg` doit être installé (`apt install gnupg`).
+Pas de GPG ni Sigstore — compatible runner shell sans accès admin.
 
 ## Release
 
@@ -23,10 +21,6 @@ git push origin main
 git push origin vX.Y.Z
 ```
 
-**Ne pas retry `v0.3.3`** — ce tag utilise encore l’ancienne CI cosign. Utiliser **`v0.3.4`** ou plus.
+Pipeline tag : `build` → `verify` → `sbom` (CycloneDX + SPDX + npm pack) → `publish`.
 
-## Vérification client
-
-```bash
-gpg --verify sbom.cdx.json.asc sbom.cdx.json
-```
+Les SBOM sont inclus dans le tarball npm et conservés en artifacts GitLab (365 j).
