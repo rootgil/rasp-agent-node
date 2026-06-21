@@ -23,6 +23,8 @@ stages:
 # ─── Shared defaults ──────────────────────────────────────────────────────────
 
 default:
+  tags:
+    - oriso-runner-01
   before_script:
     - node --version
     - npm --version
