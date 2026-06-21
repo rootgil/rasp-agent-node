@@ -101,7 +101,11 @@ security-audit:
   allow_failure: true
   script:
     - npm ci
-    - npm audit --audit-level=high
+    # Production deps only — what ships in the published npm package (devDeps excluded).
+    - npm audit --omit=dev --audit-level=high
+    - |
+      echo "=== Dev dependency audit (informational) ==="
+      npm audit --audit-level=high || true
 
 # ─── Stage: build (x2 — reproducibility check) ───────────────────────────────
 # Both jobs run in parallel on the same pinned image with SOURCE_DATE_EPOCH=0
