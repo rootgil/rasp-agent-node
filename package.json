@@ -1,6 +1,6 @@
 {
   "name": "@queno/agent-node",
-  "version": "0.3.3",
+  "version": "0.3.4",
   "description": "RASP agent for Node.js - Express, Fastify, NestJS",
   "type": "module",
   "main": "./dist/index.js",
@@ -12,7 +12,11 @@
     }
   },
   "files": [
-    "dist"
+    "dist",
+    "sbom.cdx.json",
+    "sbom.spdx.json",
+    "sbom.cdx.json.asc",
+    "sbom.spdx.json.asc"
   ],
   "scripts": {
     "build": "tsc --project tsconfig.build.json",
