@@ -57,8 +57,10 @@ benchmark:
   rules:
     - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
   script:
-    - mkdir -p .ci/bin benchmarks/output
     - |
+      set -euo pipefail
+      cd "${CI_PROJECT_DIR}"
+      mkdir -p .ci/bin benchmarks/output
       if ! command -v curl >/dev/null 2>&1; then
         echo "ERROR: curl is required on the runner host"
         exit 1
@@ -73,14 +75,16 @@ benchmark:
       fi
       export PATH="${CI_PROJECT_DIR}/.ci/bin:${PATH}"
       k6 version
-    - npm ci
-    - cd examples/banking-api && npm ci && cd ../..
-    - >
-      NODE_ENV=test RASP_MODE=monitor PORT=3000
-      node --import tsx/esm examples/banking-api/src/server.ts &
-    - sleep 5
-    - k6 run benchmarks/k6/with-agent.js --env BASE_URL=http://127.0.0.1:3000
-    - node benchmarks/compare-p99.js benchmarks/baselines/p99-baseline.json benchmarks/output/with-agent.json
+      npm ci
+      # banking-api has pnpm-lock.yaml only — npm install, not npm ci
+      npm install --prefix "${CI_PROJECT_DIR}/examples/banking-api"
+      NODE_ENV=test RASP_MODE=monitor PORT=3000 \
+        node --import tsx/esm "${CI_PROJECT_DIR}/examples/banking-api/src/server.ts" &
+      sleep 5
+      k6 run "${CI_PROJECT_DIR}/benchmarks/k6/with-agent.js" --env BASE_URL=http://127.0.0.1:3000
+      node "${CI_PROJECT_DIR}/benchmarks/compare-p99.js" \
+        "${CI_PROJECT_DIR}/benchmarks/baselines/p99-baseline.json" \
+        "${CI_PROJECT_DIR}/benchmarks/output/with-agent.json"
   artifacts:
     when: always
     paths:
