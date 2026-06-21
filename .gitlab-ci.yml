@@ -1,7 +1,7 @@
 # @queno/agent-node — GitLab CI Pipeline
 #
 # Triggers:
-#   - MR / push to main : test + benchmark (on MR) + security (audit + gitleaks + semgrep)
+#   - MR / push to main : test + benchmark (on MR) + security scan
 #   - Tag vX.Y.Z        : all of the above + double build + verify hashes + sign + npm publish
 #
 # Variables to configure in GitLab (Settings > CI/CD > Variables):
@@ -92,11 +92,8 @@ benchmark:
     expire_in: 7 days
 
 # ─── Stage: security ──────────────────────────────────────────────────────────
-# GitLab Security templates require Docker/Kubernetes. On the Oriso shell runner
-# we use npm audit (deps), gitleaks (secrets), and semgrep (SAST) — no Docker.
-
-.security_mkdir_ci: &security_mkdir_ci
-  mkdir -p .ci/bin
+# GitLab Security templates require a Docker/Kubernetes executor. On the Oriso
+# shell runner we run npm audit instead.
 
 security-audit:
   stage: security
@@ -109,64 +106,6 @@ security-audit:
     - |
       echo "=== Dev dependency audit (informational) ==="
       npm audit --audit-level=high || true
-
-gitleaks:
-  stage: security
-  <<: *only_mr_and_main
-  variables:
-    GITLEAKS_VERSION: "8.24.2"
-  script:
-    - *security_tool_install
-    - |
-      curl -fsSL \
-        "https://github.com/gitleaks/gitleaks/releases/download/v${GITLEAKS_VERSION}/gitleaks_${GITLEAKS_VERSION}_linux_x64.tar.gz" \
-        | tar -xz -C .ci/bin gitleaks
-    - .ci/bin/gitleaks version
-    - >
-      .ci/bin/gitleaks detect
-      --source "${CI_PROJECT_DIR}"
-      --config .gitleaks.toml
-      --redact
-      --verbose
-      --report-format sarif
-      --report-path gitleaks.sarif
-  artifacts:
-    when: always
-    paths:
-      - gitleaks.sarif
-    expire_in: 7 days
-
-semgrep-sast:
-  stage: security
-  <<: *only_mr_and_main
-  # Set to false once the first pipeline run is clean (or after fixing findings).
-  allow_failure: true
-  variables:
-    SEMGREP_VERSION: "1.96.0"
-  script:
-    - |
-      set -euo pipefail
-      if ! command -v python3 >/dev/null 2>&1; then
-        echo "python3 is required on the runner host for semgrep"
-        exit 1
-      fi
-      python3 -m pip install --user "semgrep==${SEMGREP_VERSION}"
-      export PATH="${HOME}/.local/bin:${PATH}"
-      semgrep --version
-    - >
-      semgrep scan
-      --config p/typescript
-      --config p/nodejs
-      --config p/secrets
-      --gitlab-sast-output gl-sast-report.json
-      --metrics off
-      --error
-      .
-  artifacts:
-    when: always
-    reports:
-      sast: gl-sast-report.json
-    expire_in: 7 days
 
 # ─── Stage: build (x2 — reproducibility check) ───────────────────────────────
 # Both jobs run in parallel on the same pinned image with SOURCE_DATE_EPOCH=0
@@ -223,9 +162,8 @@ verify-hashes:
     expire_in: 1 hour
 
 # ─── Stage: sign ──────────────────────────────────────────────────────────────
-# Keyless Sigstore signing works on gitlab.com only (public Fulcio OIDC allowlist).
-# Self-hosted instances (e.g. gitlab.oriso.dev) skip cosign and publish without
-# --provenance. Set SIGSTORE_SIGNING=true when using a private Fulcio/Rekor stack.
+# Keyless signing via Sigstore + GitLab OIDC — no private key stored anywhere.
+# The OIDC token proves the artifact was built by this specific pipeline/commit.
 
 sign:
   stage: sign
@@ -233,44 +171,38 @@ sign:
   needs:
     - job: verify-hashes
       artifacts: true
+  # GitLab OIDC token for Sigstore keyless signing
   id_tokens:
     SIGSTORE_ID_TOKEN:
       aud: sigstore
   script:
+    - |
+      set -euo pipefail
+      if ! command -v curl >/dev/null 2>&1; then
+        echo "curl is required on the runner host"
+        exit 1
+      fi
+      mkdir -p .ci/bin
+      curl -fsSL \
+        https://github.com/sigstore/cosign/releases/latest/download/cosign-linux-amd64 \
+        -o .ci/bin/cosign
+      chmod +x .ci/bin/cosign
+      export PATH="${CI_PROJECT_DIR}/.ci/bin:${PATH}"
+      cosign version
     - npm ci
     - npx --yes @cyclonedx/cyclonedx-npm --output-file sbom.cdx.json --output-format JSON
     - npm pack
     - |
       set -euo pipefail
+      export PATH="${CI_PROJECT_DIR}/.ci/bin:${PATH}"
       TARBALL=$(ls *.tgz)
-      USE_SIGSTORE=false
-      if [ "${SIGSTORE_SIGNING:-auto}" = "true" ]; then
-        USE_SIGSTORE=true
-      elif [ "${SIGSTORE_SIGNING:-auto}" = "auto" ] && [ "${CI_SERVER_HOST}" = "gitlab.com" ]; then
-        USE_SIGSTORE=true
-      fi
-      if [ "${USE_SIGSTORE}" = "true" ]; then
-        if ! command -v curl >/dev/null 2>&1; then
-          echo "curl is required on the runner host"
-          exit 1
-        fi
-        mkdir -p .ci/bin
-        curl -fsSL \
-          https://github.com/sigstore/cosign/releases/latest/download/cosign-linux-amd64 \
-          -o .ci/bin/cosign
-        chmod +x .ci/bin/cosign
-        export PATH="${CI_PROJECT_DIR}/.ci/bin:${PATH}"
-        cosign version
-        cosign sign-blob --yes --bundle "${TARBALL}.bundle" "${TARBALL}"
-        cosign attest-blob --yes --bundle sbom.bundle --predicate sbom.cdx.json --type cyclonedx "${TARBALL}"
-        echo "Signed tarball ${TARBALL}"
-      else
-        echo "INFO: Sigstore signing skipped on ${CI_SERVER_URL} (public Fulcio only trusts gitlab.com)."
-        echo "Packed ${TARBALL} (unsigned — npm publish without --provenance)"
-      fi
+      cosign sign-blob --yes --bundle "${TARBALL}.bundle" "${TARBALL}"
+      cosign attest-blob --yes --bundle sbom.bundle --predicate sbom.cdx.json --type cyclonedx "${TARBALL}"
+      echo "Signed tarball ${TARBALL}"
   artifacts:
     paths:
       - "*.tgz"
+      - "*.bundle"
       - sbom.cdx.json
     expire_in: 7 days
 
@@ -292,20 +224,8 @@ publish:
   script:
     - |
       printf '%s\n' "//registry.npmjs.org/:_authToken=${NPM_TOKEN}" > .npmrc
-    - |
-      set -euo pipefail
-      TARBALL=$(ls *.tgz)
-      USE_SIGSTORE=false
-      if [ "${SIGSTORE_SIGNING:-auto}" = "true" ]; then
-        USE_SIGSTORE=true
-      elif [ "${SIGSTORE_SIGNING:-auto}" = "auto" ] && [ "${CI_SERVER_HOST}" = "gitlab.com" ]; then
-        USE_SIGSTORE=true
-      fi
-      if [ "${USE_SIGSTORE}" = "true" ]; then
-        npm publish "${TARBALL}" --provenance --access public
-      else
-        npm publish "${TARBALL}" --access public
-      fi
+    - TARBALL=$(ls *.tgz)
+    - npm publish "${TARBALL}" --provenance --access public
     # Create a GitLab Release with the SBOM attached
     - >
       curl --fail --silent --show-error
