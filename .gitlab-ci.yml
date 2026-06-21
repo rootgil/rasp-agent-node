@@ -56,6 +56,9 @@ benchmark:
   stage: benchmark
   rules:
     - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
+  variables:
+    CI_QUIET: "1"
+    K6_LOG_LEVEL: "error"
   script:
     - |
       set -euo pipefail
@@ -68,20 +71,28 @@ benchmark:
       if command -v k6 >/dev/null 2>&1; then
         echo "Using system k6: $(command -v k6)"
       else
-        echo "Installing k6 to .ci/bin (shell runner — no apk/docker)"
         curl -fsSL https://github.com/grafana/k6/releases/download/v0.55.0/k6-v0.55.0-linux-amd64.tar.gz \
           | tar -xz --strip-components=1 -C .ci/bin
         chmod +x .ci/bin/k6
       fi
       export PATH="${CI_PROJECT_DIR}/.ci/bin:${PATH}"
-      k6 version
-      npm ci
-      # banking-api has pnpm-lock.yaml only — npm install, not npm ci
-      npm install --prefix "${CI_PROJECT_DIR}/examples/banking-api"
+      npm ci --loglevel error --no-fund --no-audit
+      npm install --prefix "${CI_PROJECT_DIR}/examples/banking-api" \
+        --loglevel error --no-fund --no-audit
       NODE_ENV=test RASP_MODE=monitor PORT=3000 \
-        node --import tsx/esm "${CI_PROJECT_DIR}/examples/banking-api/src/server.ts" &
-      sleep 5
-      k6 run "${CI_PROJECT_DIR}/benchmarks/k6/with-agent.js" --env BASE_URL=http://127.0.0.1:3000
+        node --import tsx/esm "${CI_PROJECT_DIR}/examples/banking-api/src/server.ts" \
+        >/dev/null 2>&1 &
+      SERVER_PID=$!
+      trap 'kill "${SERVER_PID}" 2>/dev/null || true' EXIT
+      for i in 1 2 3 4 5 6 7 8 9 10; do
+        curl -sf "http://127.0.0.1:3000/health" >/dev/null && break
+        sleep 1
+      done
+      curl -sf "http://127.0.0.1:3000/health" >/dev/null || { echo "ERROR: banking-api not ready"; exit 1; }
+      k6 run --quiet \
+        --env BASE_URL=http://127.0.0.1:3000 \
+        --env CI_QUIET=1 \
+        "${CI_PROJECT_DIR}/benchmarks/k6/with-agent.js"
       node "${CI_PROJECT_DIR}/benchmarks/compare-p99.js" \
         "${CI_PROJECT_DIR}/benchmarks/baselines/p99-baseline.json" \
         "${CI_PROJECT_DIR}/benchmarks/output/with-agent.json"
