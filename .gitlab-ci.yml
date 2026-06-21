@@ -126,14 +126,13 @@ secret_detection:
   script:
     - npm ci
     - npm run build
-    # Hash every file in dist/ and write a sorted manifest
-    - find dist -type f | sort | xargs sha256sum > build.sha256
-    - echo "=== Build hash manifest ==="
-    - cat build.sha256
+    - find dist -type f | sort | xargs sha256sum > "${CI_JOB_NAME}.sha256"
+    - echo "=== Build hash manifest (${CI_JOB_NAME}) ==="
+    - cat "${CI_JOB_NAME}.sha256"
   artifacts:
     paths:
       - dist/
-      - build.sha256
+      - "${CI_JOB_NAME}.sha256"
     expire_in: 1 hour
 
 build-1:
@@ -153,21 +152,17 @@ verify-hashes:
     - job: build-2
       artifacts: true
   script:
-    - echo "Comparing build-1 and build-2 hash manifests..."
-    - mv build.sha256 build-2.sha256
-    # build-1 artifact overwrites — we need both; use CI_JOB_NAME to distinguish
-    # Both artifacts are downloaded into the same workspace; compare via diff
     - |
-      if ! diff <(sort build-1.sha256 2>/dev/null || sort build.sha256) <(sort build-2.sha256); then
-        echo "ERROR: builds are NOT reproducible — hashes diverge. Blocking release."
+      echo "Comparing build-1 and build-2 hash manifests..."
+      if ! diff <(sort build-1.sha256) <(sort build-2.sha256); then
+        echo "ERROR - builds are NOT reproducible — hashes diverge. Blocking release."
         exit 1
       fi
-    - echo "OK: builds are reproducible."
-  # Pass dist/ to the next stages
+      echo "OK - builds are reproducible."
   artifacts:
     paths:
       - dist/
-      - build.sha256
+      - build-1.sha256
     expire_in: 1 hour
 
 # ─── Stage: sign ──────────────────────────────────────────────────────────────
@@ -225,9 +220,8 @@ publish:
     SIGSTORE_ID_TOKEN:
       aud: sigstore
   script:
-    # Configure npm auth
-    - echo "//registry.npmjs.org/:_authToken=${NPM_TOKEN}" > .npmrc
-    # Publish with provenance (SLSA attestation via Sigstore OIDC)
+    - |
+      printf '%s\n' "//registry.npmjs.org/:_authToken=${NPM_TOKEN}" > .npmrc
     - npm publish --provenance --access public
     # Create a GitLab Release with the SBOM attached
     - >
