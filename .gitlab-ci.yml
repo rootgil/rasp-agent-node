@@ -177,25 +177,28 @@ sign:
       aud: sigstore
   script:
     - |
+      set -euo pipefail
       if ! command -v curl >/dev/null 2>&1; then
         echo "curl is required on the runner host"
         exit 1
       fi
-    - >
-      curl -fsSL
-      https://github.com/sigstore/cosign/releases/latest/download/cosign-linux-amd64
-      -o /usr/local/bin/cosign && chmod +x /usr/local/bin/cosign
-    # Generate SBOM (CycloneDX) from installed dependencies
+      mkdir -p .ci/bin
+      curl -fsSL \
+        https://github.com/sigstore/cosign/releases/latest/download/cosign-linux-amd64 \
+        -o .ci/bin/cosign
+      chmod +x .ci/bin/cosign
+      export PATH="${CI_PROJECT_DIR}/.ci/bin:${PATH}"
+      cosign version
     - npm ci
     - npx --yes @cyclonedx/cyclonedx-npm --output-file sbom.cdx.json --output-format JSON
-    # Pack the tarball (same as what npm publish will produce)
     - npm pack
-    - TARBALL=$(ls *.tgz)
-    # Sign the tarball — keyless, ephemeral cert tied to this pipeline identity
-    - cosign sign-blob --yes --bundle "${TARBALL}.bundle" "${TARBALL}"
-    # Attest the SBOM against the tarball
-    - cosign attest-blob --yes --bundle sbom.bundle --predicate sbom.cdx.json --type cyclonedx "${TARBALL}"
-    - echo "Signed tarball ${TARBALL}"
+    - |
+      set -euo pipefail
+      export PATH="${CI_PROJECT_DIR}/.ci/bin:${PATH}"
+      TARBALL=$(ls *.tgz)
+      cosign sign-blob --yes --bundle "${TARBALL}.bundle" "${TARBALL}"
+      cosign attest-blob --yes --bundle sbom.bundle --predicate sbom.cdx.json --type cyclonedx "${TARBALL}"
+      echo "Signed tarball ${TARBALL}"
   artifacts:
     paths:
       - "*.tgz"
