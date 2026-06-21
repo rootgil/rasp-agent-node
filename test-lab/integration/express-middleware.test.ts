@@ -11,15 +11,19 @@ import { describe, it, expect, beforeAll, afterAll, vi } from "vitest";
 import express from "express";
 import supertest from "supertest";
 import { RaspAgent, createExpressMiddleware } from "../../src/index.js";
+import { createOfflineDetectors } from "../../src/detectors/index.js";
 
 function buildApp(mode: "monitor" | "block") {
-  const agent = new RaspAgent({
-    apiKey: "test_key",
-    projectId: "proj_test",
-    agentId: "agent_test",
-    auditLog: false,
-    mode,
-  });
+  const agent = new RaspAgent(
+    {
+      apiKey: "test_key",
+      projectId: "proj_test",
+      agentId: "agent_test",
+      auditLog: false,
+      mode,
+    },
+    createOfflineDetectors(),
+  );
 
   const app = express();
   app.use(express.json());
@@ -108,13 +112,16 @@ describe("Express middleware - block mode", () => {
 
 describe("Express middleware - event enqueue in monitor mode", () => {
   it("enqueues event on detection without blocking", async () => {
-    const agent = new RaspAgent({
-      apiKey: "test_key",
-      projectId: "proj_test",
-      agentId: "agent_test",
-      auditLog: false,
-      mode: "monitor",
-    });
+    const agent = new RaspAgent(
+      {
+        apiKey: "test_key",
+        projectId: "proj_test",
+        agentId: "agent_test",
+        auditLog: false,
+        mode: "monitor",
+      },
+      createOfflineDetectors(),
+    );
     const enqueueSpy = vi.spyOn(
       (agent as unknown as Record<string, unknown>).buffer as { enqueue: (e: unknown) => void },
       "enqueue"

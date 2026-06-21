@@ -11,6 +11,7 @@
 import { describe, it, expect, beforeAll, afterAll } from "vitest";
 import supertest from "supertest";
 import { RaspAgent } from "../../src/agent.js";
+import { createOfflineDetectors } from "../../src/detectors/index.js";
 import { createBankingApp } from "../../examples/banking-api/src/app.js";
 import { MockCollector } from "../mocks/mock-collector.js";
 import { flushAsync } from "../mocks/test-agent.js";
@@ -25,15 +26,18 @@ beforeAll(async () => {
 
   process.env["RASP_COLLECTOR_URL"] = collector.url;
 
-  agent = new RaspAgent({
-    apiKey: "test_key",
-    projectId: "proj_test",
-    agentId: "agent_test",
-    auditLog: false,
-    mode: "block",
-    flushIntervalMs: 200,
-    bufferMaxSize: 1,
-  });
+  agent = new RaspAgent(
+    {
+      apiKey: "test_key",
+      projectId: "proj_test",
+      agentId: "agent_test",
+      auditLog: false,
+      mode: "block",
+      flushIntervalMs: 200,
+      bufferMaxSize: 1,
+    },
+    createOfflineDetectors(),
+  );
   agent.start();
 
   app = createBankingApp(agent);

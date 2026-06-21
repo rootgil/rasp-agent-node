@@ -16,6 +16,7 @@ import {
   __resetInstrumentationForTests,
 } from "../../src/db-hooks/instrument.js";
 import { RaspAgent } from "../../src/agent.js";
+import { createOfflineDetectors } from "../../src/detectors/index.js";
 import { normalizeRequest } from "../mocks/normalize-request.js";
 
 let NodeSDK: typeof import("@opentelemetry/sdk-node").NodeSDK | null = null;
@@ -48,14 +49,17 @@ describe("RASP agent + OpenTelemetry coexistence", () => {
     // Install RASP DB hooks after OTel (worst case for hook conflicts)
     instrumentDatabaseDrivers();
 
-    agent = new RaspAgent({
-      apiKey: "test_key",
-      projectId: "proj_test",
-      agentId: "agent_compat_otel",
-      auditLog: false,
-      mode: "block",
-      instrumentDb: true,
-    });
+    agent = new RaspAgent(
+      {
+        apiKey: "test_key",
+        projectId: "proj_test",
+        agentId: "agent_compat_otel",
+        auditLog: false,
+        mode: "block",
+        instrumentDb: true,
+      },
+      createOfflineDetectors(),
+    );
     agent.start();
   });
 

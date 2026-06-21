@@ -13,6 +13,7 @@ import {
   __resetInstrumentationForTests,
 } from "../../src/db-hooks/instrument.js";
 import { RaspAgent } from "../../src/agent.js";
+import { createOfflineDetectors } from "../../src/detectors/index.js";
 import { normalizeRequest } from "../mocks/normalize-request.js";
 import bolaJwts from "../fixtures/payloads/bola-jwts.json" assert { type: "json" };
 
@@ -21,14 +22,17 @@ describe("DB hook installation via agent (instrumentDb: true)", () => {
 
   beforeEach(() => {
     __resetInstrumentationForTests();
-    agent = new RaspAgent({
-      apiKey: "test_key",
-      projectId: "proj_test",
-      agentId: "agent_test",
-      auditLog: false,
-      instrumentDb: true,
-      mode: "monitor",
-    });
+    agent = new RaspAgent(
+      {
+        apiKey: "test_key",
+        projectId: "proj_test",
+        agentId: "agent_test",
+        auditLog: false,
+        instrumentDb: true,
+        mode: "monitor",
+      },
+      createOfflineDetectors(),
+    );
     agent.start();
   });
 
@@ -89,13 +93,16 @@ describe("BOLA detection (JWT sub mismatch)", () => {
   let agent: RaspAgent;
 
   beforeEach(() => {
-    agent = new RaspAgent({
-      apiKey: "test_key",
-      projectId: "proj_test",
-      agentId: "agent_test",
-      auditLog: false,
-      mode: "block",
-    });
+    agent = new RaspAgent(
+      {
+        apiKey: "test_key",
+        projectId: "proj_test",
+        agentId: "agent_test",
+        auditLog: false,
+        mode: "block",
+      },
+      createOfflineDetectors(),
+    );
   });
 
   afterEach(async () => {

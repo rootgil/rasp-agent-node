@@ -9,15 +9,19 @@ import { describe, it, expect, beforeAll, afterAll } from "vitest";
 import express from "express";
 import supertest from "supertest";
 import { RaspAgent, createNestMiddleware } from "../../src/index.js";
+import { createOfflineDetectors } from "../../src/detectors/index.js";
 
 function buildNestApp(mode: "monitor" | "block") {
-  const agent = new RaspAgent({
-    apiKey: "test_key",
-    projectId: "proj_test",
-    agentId: "agent_test",
-    auditLog: false,
-    mode,
-  });
+  const agent = new RaspAgent(
+    {
+      apiKey: "test_key",
+      projectId: "proj_test",
+      agentId: "agent_test",
+      auditLog: false,
+      mode,
+    },
+    createOfflineDetectors(),
+  );
 
   const MiddlewareClass = createNestMiddleware(agent);
   const middleware = new MiddlewareClass();

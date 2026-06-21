@@ -9,15 +9,19 @@ import Fastify, { type FastifyInstance } from "fastify";
 import supertest from "supertest";
 import type { AddressInfo } from "node:net";
 import { RaspAgent, createFastifyPlugin } from "../../src/index.js";
+import { createOfflineDetectors } from "../../src/detectors/index.js";
 
 async function buildFastifyApp(mode: "monitor" | "block") {
-  const agent = new RaspAgent({
-    apiKey: "test_key",
-    projectId: "proj_test",
-    agentId: "agent_test",
-    auditLog: false,
-    mode,
-  });
+  const agent = new RaspAgent(
+    {
+      apiKey: "test_key",
+      projectId: "proj_test",
+      agentId: "agent_test",
+      auditLog: false,
+      mode,
+    },
+    createOfflineDetectors(),
+  );
 
   const fastify: FastifyInstance = Fastify({ logger: false });
   await fastify.register(createFastifyPlugin(agent));

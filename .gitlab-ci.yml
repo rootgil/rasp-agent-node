@@ -7,7 +7,11 @@
 # Variables to configure in GitLab (Settings > CI/CD > Variables):
 #   NPM_TOKEN   — npm automation token, Protected + Masked, scoped to protected tags v*
 
-# Pinned digest — regenerate with:
+# Oriso instance runner uses a shell executor — `image:` is ignored; Node must
+# be installed on the runner host. GitLab Security templates need Docker and are
+# replaced with npm audit below.
+
+# Pinned digest — used when the runner executor supports Docker images:
 #   docker pull node:22-alpine && docker inspect node:22-alpine --format '{{index .RepoDigests 0}}'
 image: node:22-alpine@sha256:ab07539e0988b63558ff621f5fbe1077054c39d9809112974fb79993949d41cd
 
@@ -88,30 +92,16 @@ benchmark:
     expire_in: 7 days
 
 # ─── Stage: security ──────────────────────────────────────────────────────────
+# GitLab Security templates require a Docker/Kubernetes executor. On the Oriso
+# shell runner we run npm audit instead.
 
-include:
-  - template: Security/SAST.gitlab-ci.yml
-  - template: Security/Dependency-Scanning.gitlab-ci.yml
-  - template: Security/Secret-Detection.gitlab-ci.yml
-
-# Restrict security jobs to MR + main (same as test)
-sast:
-  rules:
-    - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
-    - if: '$CI_COMMIT_BRANCH == "main"'
-    - if: '$CI_COMMIT_TAG =~ /^v\d+\.\d+\.\d+/'
-
-dependency_scanning:
-  rules:
-    - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
-    - if: '$CI_COMMIT_BRANCH == "main"'
-    - if: '$CI_COMMIT_TAG =~ /^v\d+\.\d+\.\d+/'
-
-secret_detection:
-  rules:
-    - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
-    - if: '$CI_COMMIT_BRANCH == "main"'
-    - if: '$CI_COMMIT_TAG =~ /^v\d+\.\d+\.\d+/'
+security-audit:
+  stage: security
+  <<: *only_mr_and_main
+  allow_failure: true
+  script:
+    - npm ci
+    - npm audit --audit-level=high
 
 # ─── Stage: build (x2 — reproducibility check) ───────────────────────────────
 # Both jobs run in parallel on the same pinned image with SOURCE_DATE_EPOCH=0
@@ -182,8 +172,11 @@ sign:
     SIGSTORE_ID_TOKEN:
       aud: sigstore
   script:
-    - apk add --no-cache curl
-    # Install cosign
+    - |
+      if ! command -v curl >/dev/null 2>&1; then
+        echo "curl is required on the runner host"
+        exit 1
+      fi
     - >
       curl -fsSL
       https://github.com/sigstore/cosign/releases/latest/download/cosign-linux-amd64

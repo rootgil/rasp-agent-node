@@ -12,20 +12,24 @@
  */
 import { describe, it, expect, beforeAll, afterAll, beforeEach, afterEach, vi } from "vitest";
 import { RaspAgent } from "../../src/agent.js";
+import { createOfflineDetectors } from "../../src/detectors/index.js";
 import { normalizeRequest } from "../mocks/normalize-request.js";
 
 // ── Helpers ────────────────────────────────────────────────────────────────
 
 function buildAgent(mode: "monitor" | "block" = "monitor"): RaspAgent {
-  return new RaspAgent({
-    apiKey: "stress_key",
-    projectId: "proj_stress",
-    agentId: "agent_stress",
-    auditLog: false,
-    mode,
-    heartbeatIntervalMs: 60_000,
-    flushIntervalMs: 60_000,
-  });
+  return new RaspAgent(
+    {
+      apiKey: "stress_key",
+      projectId: "proj_stress",
+      agentId: "agent_stress",
+      auditLog: false,
+      mode,
+      heartbeatIntervalMs: 60_000,
+      flushIntervalMs: 60_000,
+    },
+    createOfflineDetectors(),
+  );
 }
 
 /** Attach uncaught-exception / unhandled-rejection listeners that fail the test. */

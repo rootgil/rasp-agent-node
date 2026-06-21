@@ -10,6 +10,7 @@
  * The caller is responsible for calling agent.stop() in afterAll/afterEach.
  */
 import { RaspAgent } from "../../src/agent.js";
+import { createOfflineDetectors } from "../../src/detectors/index.js";
 import type { RaspConfig } from "../../src/types.js";
 
 export interface TestAgentOptions {
@@ -20,7 +21,8 @@ export interface TestAgentOptions {
 }
 
 export function buildTestAgent(opts: TestAgentOptions): RaspAgent {
-  return new RaspAgent({
+  return new RaspAgent(
+    {
     apiKey: "test_key_lab",
     projectId: "proj_test",
     agentId: "agent_test",
@@ -34,7 +36,9 @@ export function buildTestAgent(opts: TestAgentOptions): RaspAgent {
     bufferMaxSize: 10,
     transportTimeoutMs: 3_000,
     ...opts.extra,
-  });
+  },
+    createOfflineDetectors(),
+  );
 }
 
 /**

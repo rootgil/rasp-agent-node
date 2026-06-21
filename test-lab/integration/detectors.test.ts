@@ -7,6 +7,7 @@
  */
 import { describe, it, expect, beforeEach, afterAll } from "vitest";
 import { RaspAgent } from "../../src/agent.js";
+import { createOfflineDetectors } from "../../src/detectors/index.js";
 import { requestFromFixture } from "../mocks/normalize-request.js";
 import { normalizeRequest } from "../mocks/normalize-request.js";
 import sqliPayloads         from "../fixtures/payloads/sqli.json" assert { type: "json" };
@@ -36,13 +37,16 @@ type Fixture = {
 let agent: RaspAgent;
 
 beforeEach(() => {
-  agent = new RaspAgent({
-    apiKey: "test_key",
-    projectId: "proj_test",
-    agentId: "agent_test",
-    auditLog: false,
-    mode: "block",
-  });
+  agent = new RaspAgent(
+    {
+      apiKey: "test_key",
+      projectId: "proj_test",
+      agentId: "agent_test",
+      auditLog: false,
+      mode: "block",
+    },
+    createOfflineDetectors(),
+  );
 });
 
 afterAll(async () => {
