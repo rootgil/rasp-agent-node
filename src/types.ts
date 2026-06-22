@@ -213,6 +213,14 @@ export interface HeartbeatPayload {
   mode: AgentMode;
   /** ISO-8601 timestamp set by the agent. */
   timestamp?: string;
+  /**
+   * Set to `"upgrade_failed"` when the new version could not initialize within
+   * 60 seconds (Addendum D.4). The control plane records this and can trigger
+   * a control-plane-initiated rollback.
+   */
+  upgradeStatus?: "upgrade_failed" | "upgrade_succeeded" | "rollback_loaded";
+  /** Reason for the upgradeStatus, if any. */
+  upgradeStatusReason?: string;
 }
 
 /**
@@ -272,6 +280,12 @@ export interface DiscoveryEntry {
   timedCount?: number;
   /** Inferred parameter schema: field name -> JSON type. */
   schemaFields?: Record<string, string>;
+  /**
+   * Sensitive field names detected on this endpoint (e.g. ["email","password"]).
+   * Populated from the redaction pattern name of each matched key.
+   * Used to build the data flow diagram on the dashboard (Addendum A.5).
+   */
+  sensitiveFields?: string[];
 }
 
 /**

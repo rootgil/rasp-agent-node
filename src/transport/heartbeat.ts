@@ -48,6 +48,9 @@ export class HeartbeatScheduler {
   private lastTargetVersion: string | null | undefined = undefined;
   /** Tracks whether the kill switch was active on the last heartbeat response. */
   private killSwitchActive = false;
+  /** One-shot upgrade lifecycle event sent on the next beat, then cleared. */
+  private pendingUpgradeStatus?: "upgrade_failed" | "upgrade_succeeded" | "rollback_loaded";
+  private pendingUpgradeStatusReason?: string;
 
   /**
    * @param client - Transport used to deliver heartbeats.
@@ -112,11 +115,30 @@ export class HeartbeatScheduler {
   }
 
   /**
+   * Record an upgrade lifecycle event to be reported on the next heartbeat
+   * (Addendum D.4). After it is sent once, the field is cleared so subsequent
+   * heartbeats do not repeatedly report the same event.
+   */
+  setUpgradeStatus(
+    upgradeStatus: "upgrade_failed" | "upgrade_succeeded" | "rollback_loaded",
+    reason?: string
+  ): void {
+    this.pendingUpgradeStatus = upgradeStatus;
+    this.pendingUpgradeStatusReason = reason;
+  }
+
+  /**
    * Send one heartbeat, then react to the response:
    *  - `killSwitch` → stop the loop and fire {@link onKillSwitch}.
    *  - `policyVersion` change → cache it and fire {@link onPolicyChange}.
    */
   private async beat(): Promise<void> {
+    const upgradeStatus = this.pendingUpgradeStatus;
+    const upgradeStatusReason = this.pendingUpgradeStatusReason;
+    // Clear before sending so a transport error doesn't cause duplicate reports.
+    this.pendingUpgradeStatus = undefined;
+    this.pendingUpgradeStatusReason = undefined;
+
     const payload: HeartbeatPayload = {
       projectId: this.cfg.projectId,
       agentId: this.cfg.agentId,
@@ -126,6 +148,7 @@ export class HeartbeatScheduler {
       status: this.status,
       mode: this.getMode(),
       timestamp: new Date().toISOString(),
+      ...(upgradeStatus ? { upgradeStatus, upgradeStatusReason } : {}),
     };
 
     const res = await this.client.sendHeartbeat(payload);

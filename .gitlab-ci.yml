@@ -11,6 +11,7 @@ image: node:22-alpine@sha256:ab07539e0988b63558ff621f5fbe1077054c39d9809112974fb
 
 stages:
   - test
+  - compat
   - benchmark
   - security
   - build
@@ -51,6 +52,25 @@ test:
         - package-lock.json
     paths:
       - node_modules/
+
+conflict-test:
+  stage: compat
+  <<: *only_mr_and_main
+  allow_failure: false
+  script:
+    - npm ci
+    - npm run test:compat
+  cache:
+    key:
+      files:
+        - package-lock.json
+    paths:
+      - node_modules/
+  artifacts:
+    when: always
+    paths:
+      - test-lab/compat/CONFLICTS.md
+    expire_in: 30 days
 
 benchmark:
   stage: benchmark
@@ -157,9 +177,19 @@ sbom:
       - sbom.spdx.json
     expire_in: 365 days
 
+# Publishing is MANUALLY triggered and gated by the `npm-production` protected
+# environment (Addendum E.3.2). Configure the environment in GitLab with
+# required approvers (minimum 2) before the job can run. The NPM_TOKEN is
+# scoped to the `npm-production` environment only — it is not available to
+# any other job.
 publish:
   stage: publish
   <<: *only_tag
+  when: manual
+  environment:
+    name: npm-production
+    # Deploy URL shown in the GitLab UI release panel.
+    url: https://www.npmjs.com/package/@queno/agent-node/v/${CI_COMMIT_TAG}
   needs:
     - job: sbom
       artifacts: true
@@ -168,6 +198,7 @@ publish:
       printf '%s\n' "//registry.npmjs.org/:_authToken=${NPM_TOKEN}" > .npmrc
     - TARBALL=$(ls *.tgz)
     - npm publish "${TARBALL}" --access public
+    - rm -f .npmrc
     - |
       curl --fail --silent --show-error \
         --header "JOB-TOKEN: ${CI_JOB_TOKEN}" \

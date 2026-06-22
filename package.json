@@ -18,6 +18,7 @@
   ],
   "scripts": {
     "build": "tsc --project tsconfig.build.json",
+    "postbuild": "node scripts/generate-integrity.mjs",
     "dev": "tsx watch src/index.ts",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
@@ -53,6 +54,8 @@
   "devDependencies": {
     "@nestjs/common": "^11.1.24",
     "@nestjs/core": "^11.1.24",
+    "@opentelemetry/auto-instrumentations-node": "^0.77.0",
+    "@opentelemetry/sdk-node": "^0.219.0",
     "@types/express": "^5.0.2",
     "@types/node": "^20",
     "@types/supertest": "^6.0.3",

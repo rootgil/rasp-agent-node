@@ -16,6 +16,7 @@
  *    is drained.
  */
 import { validateConfig, COLLECTOR_URL, type ValidatedRaspConfig } from "./config.js";
+import { checkBinaryIntegrity } from "./integrity.js";
 import type {
   RaspConfig,
   NormalizedRequest,
@@ -43,6 +44,7 @@ import { instrumentDatabaseDrivers } from "./db-hooks/instrument.js";
 import { correlateBola } from "./db-hooks/correlate.js";
 import { startSelfProtection } from "./self-protect.js";
 import { enterContext, type RequestContext } from "./runtime-context.js";
+import { withInitTimeout, tryFallbackBinary } from "./self-rollback.js";
 import type { RequestOutcome } from "./types.js";
 
 export class RaspAgent {
@@ -155,6 +157,10 @@ export class RaspAgent {
       agentId: this.cfg.agentId,
       flushIntervalMs: this.cfg.discoveryFlushIntervalMs,
     });
+
+    // Verify binary integrity against the release manifest (Addendum E.7).
+    // Fail-open: the agent continues running regardless of the outcome.
+    checkBinaryIntegrity();
   }
 
   /**
@@ -165,16 +171,38 @@ export class RaspAgent {
    * constructor.
    */
   start(): void {
-    if (this.cfg.instrumentDb) {
-      // Best-effort; never throws.
-      instrumentDatabaseDrivers();
-    }
-    if (this.cfg.selfProtect) {
-      this.stopSelfProtection = startSelfProtection({
-        checkHooks: this.cfg.instrumentDb,
-        antiDebug: true,
-      });
-    }
+    // Wrap initialization in a 60-second timeout (Addendum D.4). If hooks fail
+    // to attach or the control plane is unreachable, emit upgrade_failed via
+    // the next heartbeat and attempt to load dist-previous/.
+    void withInitTimeout(async () => {
+      if (this.cfg.instrumentDb) {
+        // Best-effort; never throws.
+        instrumentDatabaseDrivers();
+      }
+      if (this.cfg.selfProtect) {
+        this.stopSelfProtection = startSelfProtection({
+          checkHooks: this.cfg.instrumentDb,
+          antiDebug: true,
+        });
+      }
+    }).then((initialized) => {
+      if (!initialized) {
+        console.warn(
+          "[rasp-agent] Initialization timed out after 60 s. " +
+            "Attempting to load previous version from dist-previous/."
+        );
+        const result = tryFallbackBinary();
+        // Signal the control plane via the next heartbeat so it can trigger a
+        // control-plane-initiated rollback (Addendum D.4).
+        this.heartbeat.setUpgradeStatus(
+          "upgrade_failed",
+          result.loaded
+            ? "fallback loaded from dist-previous/"
+            : result.reason ?? "dist-previous/ unavailable"
+        );
+      }
+    });
+
     this.heartbeat.start();
   }
 

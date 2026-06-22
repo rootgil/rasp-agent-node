@@ -15,6 +15,7 @@ import { DEFAULT_REDACTION_PATTERNS } from "../redaction/patterns.js";
 interface EndpointStats {
   authStatus: AuthStatus;
   hasSensitiveData: boolean;
+  sensitiveFields: Set<string>;
   count: number;
   authObserved: boolean;
   errorCount: number;
@@ -28,6 +29,19 @@ function hasSensitiveKeys(obj: unknown): boolean {
   return Object.keys(obj as Record<string, unknown>).some((key) =>
     DEFAULT_REDACTION_PATTERNS.some((p) => p.matchKey.test(key))
   );
+}
+
+/** Returns the canonical pattern names for any sensitive keys found in obj. */
+function collectSensitiveFieldNames(obj: unknown, into: Set<string>): void {
+  if (!obj || typeof obj !== "object") return;
+  for (const key of Object.keys(obj as Record<string, unknown>)) {
+    for (const p of DEFAULT_REDACTION_PATTERNS) {
+      if (p.matchKey.test(key)) {
+        into.add(p.name);
+        break;
+      }
+    }
+  }
 }
 
 function inferAuthStatus(req: NormalizedRequest): AuthStatus {
@@ -80,13 +94,19 @@ export class EndpointObserver {
         if (!existing.hasSensitiveData) {
           existing.hasSensitiveData = inferHasSensitiveData(req);
         }
+        collectSensitiveFieldNames(req.body, existing.sensitiveFields);
+        collectSensitiveFieldNames(req.query, existing.sensitiveFields);
         inferSchema(req, existing.schemaFields);
       } else {
         const schemaFields: Record<string, string> = {};
         inferSchema(req, schemaFields);
+        const sensitiveFields = new Set<string>();
+        collectSensitiveFieldNames(req.body, sensitiveFields);
+        collectSensitiveFieldNames(req.query, sensitiveFields);
         this.stats.set(key, {
           authStatus: inferAuthStatus(req),
           hasSensitiveData: inferHasSensitiveData(req),
+          sensitiveFields,
           count: 1,
           authObserved: false,
           errorCount: 0,
@@ -135,6 +155,7 @@ export class EndpointObserver {
         pathPattern: key.slice(colonIdx + 1),
         authStatus: s.authStatus,
         hasSensitiveData: s.hasSensitiveData,
+        sensitiveFields: s.sensitiveFields.size > 0 ? Array.from(s.sensitiveFields) : undefined,
         observationCount: s.count,
         authObserved: s.authObserved,
         errorCount: s.errorCount,
