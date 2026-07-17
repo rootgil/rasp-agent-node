@@ -2,7 +2,7 @@
 
 > Runtime Application Self-Protection for Node.js - Express · Fastify · NestJS
 
-[![npm version](https://img.shields.io/badge/npm-0.1.2-blue)](https://www.npmjs.com/package/@queno/agent-node)
+[![npm version](https://img.shields.io/npm/v/@queno/agent-node.svg)](https://www.npmjs.com/package/@queno/agent-node)
 [![node](https://img.shields.io/badge/node-%3E%3D18-brightgreen)](https://nodejs.org)
 [![license](https://img.shields.io/badge/license-MIT-green)](./LICENSE)
 [![build](https://img.shields.io/badge/build-passing-brightgreen)](#)
