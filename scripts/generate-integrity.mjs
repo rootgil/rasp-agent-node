@@ -35,13 +35,26 @@ function collectJsFiles(dir, result = {}) {
 }
 
 const files = collectJsFiles(distDir);
+
+// Stable key order so JSON output does not depend on readdir() order.
+const sortedFiles = Object.fromEntries(
+  Object.entries(files).sort(([a], [b]) => a.localeCompare(b))
+);
+
+// Prefer SOURCE_DATE_EPOCH so dual CI builds produce identical integrity.json.
+const epoch = process.env.SOURCE_DATE_EPOCH;
+const generatedAt =
+  epoch != null && epoch !== ""
+    ? new Date(Number(epoch) * 1000).toISOString()
+    : new Date().toISOString();
+
 const manifest = {
   version: pkg.version,
-  generatedAt: new Date().toISOString(),
-  files,
+  generatedAt,
+  files: sortedFiles,
 };
 
 writeFileSync(join(distDir, "integrity.json"), JSON.stringify(manifest, null, 2) + "\n");
 console.log(
-  `[integrity] Hashed ${Object.keys(files).length} files → dist/integrity.json (v${pkg.version})`
+  `[integrity] Hashed ${Object.keys(sortedFiles).length} files → dist/integrity.json (v${pkg.version})`
 );
