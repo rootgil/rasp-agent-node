@@ -31,7 +31,7 @@ import { EventBuffer } from "./transport/buffer.js";
 import { HeartbeatScheduler } from "./transport/heartbeat.js";
 import { createDefaultDetectors, type Detector } from "./detectors/index.js";
 import { CustomRuleDetector } from "./detectors/custom-rule.js";
-import { extractPathId, extractJwtSub } from "./detectors/bola.js";
+import { BolaDetector, extractPathId, extractJwtSub } from "./detectors/bola.js";
 import { EndpointObserver } from "./api-discovery/endpoint-observer.js";
 import { DiscoveryBuffer } from "./api-discovery/discovery-buffer.js";
 import { PolicyManager } from "./policy/policy-manager.js";
@@ -75,6 +75,8 @@ export class RaspAgent {
   private killed = false;
   /** Stops the self-protection timer (Addendum E.7); null when disabled. */
   private stopSelfProtection: (() => void) | null = null;
+  /** Clears the BOLA state prune timer. */
+  private bolaPruneTimer: ReturnType<typeof setInterval> | null = null;
   /**
    * Enforcement mode in effect. Initialised from `cfg.mode` and updated
    * whenever the collector returns a different mode in a heartbeat response.
@@ -204,6 +206,21 @@ export class RaspAgent {
     });
 
     this.heartbeat.start();
+
+    // Prune stateful BOLA windows periodically (fail-open if prune throws).
+    this.bolaPruneTimer = setInterval(() => {
+      try {
+        for (const d of this.detectors) {
+          if (d instanceof BolaDetector) d.prune();
+        }
+        for (const d of this.extraDetectors) {
+          if (d instanceof BolaDetector) d.prune();
+        }
+      } catch {
+        /* ignore */
+      }
+    }, 60_000);
+    this.bolaPruneTimer.unref?.();
   }
 
   /**
@@ -311,6 +328,10 @@ export class RaspAgent {
   async stop(): Promise<void> {
     this.heartbeat.stop();
     this.stopSelfProtection?.();
+    if (this.bolaPruneTimer) {
+      clearInterval(this.bolaPruneTimer);
+      this.bolaPruneTimer = null;
+    }
     await this.buffer.stop();
     await this.discoveryBuffer.stop();
     this.auditLog?.close();

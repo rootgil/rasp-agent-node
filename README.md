@@ -15,7 +15,8 @@ It instruments Express, Fastify, and NestJS middleware to inspect each incoming 
 
 ## Features
 
-- **10 built-in detectors** - SQL injection, XSS, Command injection, Path traversal, NoSQL injection, SSRF, Prototype pollution, Template injection, Suspicious headers, BOLA/IDOR
+- **Policy-driven detection** - rules are chosen and published from the RASP platform (signed policy via heartbeat). Default detector chain is empty until policy arrives.
+- **Built-in detectors (opt-in)** - SQL injection, XSS, Command injection, Path traversal, NoSQL injection, SSRF, Prototype pollution, Template injection, Suspicious headers, BOLA/IDOR — pass `createOfflineDetectors()` or individual detectors via `extraDetectors` if you want offline signatures without waiting for policy
 - **Local redaction engine** - key-based denylist + value-based (email, card, SIN/RAMQ, IP). Redaction happens *before* telemetry leaves the process
 - **Local JSONL audit log** - metadata-only, never raw sensitive values, with automatic rotation
 - **Monitor and block modes** - monitor by default; block must be explicitly enabled or pushed via signed policy
@@ -24,6 +25,18 @@ It instruments Express, Fastify, and NestJS middleware to inspect each incoming 
 - **Self-protection (optional)** - AES-256-GCM in-memory secret store, anti-debug detection, DB hook integrity
 - **Fail-open** - any internal error is swallowed; the agent never crashes the host application
 - **Single runtime dependency** - only `zod`. No axios, no winston, no lodash
+
+### Detection model
+
+```ts
+import { RaspAgent, createOfflineDetectors } from "@queno/agent-node";
+
+// Default: empty chain — detection rules come from the platform (publish rules in the dashboard).
+const agent = new RaspAgent({ apiKey, projectId, agentId });
+
+// Optional offline fallback: enable built-in signatures in application code.
+const offline = new RaspAgent({ apiKey, projectId, agentId }, createOfflineDetectors());
+```
 
 ---
 

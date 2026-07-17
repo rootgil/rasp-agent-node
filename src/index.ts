@@ -34,7 +34,10 @@ export type {
 } from "./types.js";
 
 export type { Detector } from "./detectors/index.js";
-export { createDefaultDetectors } from "./detectors/index.js";
+export {
+  createDefaultDetectors,
+  createOfflineDetectors,
+} from "./detectors/index.js";
 export { CustomRuleDetector } from "./detectors/custom-rule.js";
 export {
   instrumentDatabaseDrivers,
