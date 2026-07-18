@@ -1,6 +1,6 @@
 {
   "name": "@queno/agent-node",
-  "version": "0.5.1",
+  "version": "0.5.2",
   "description": "RASP agent for Node.js - Express, Fastify, NestJS",
   "type": "module",
   "main": "./dist/index.js",
