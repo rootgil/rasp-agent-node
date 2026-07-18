@@ -52,6 +52,7 @@ const STRUCTURAL_KEYS = new Set([
   // metadata sub-keys always required by the collector
   "redacted",
   "matchedRule",
+  "matchedRules",
   "auditLoggedLocally",
 ]);
 

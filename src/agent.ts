@@ -29,7 +29,7 @@ import { AuditLog } from "./redaction/audit-log.js";
 import { TransportClient } from "./transport/client.js";
 import { EventBuffer } from "./transport/buffer.js";
 import { HeartbeatScheduler } from "./transport/heartbeat.js";
-import { createDefaultDetectors, type Detector } from "./detectors/index.js";
+import { createDefaultDetectors, type Detector, pickPrimaryDetection } from "./detectors/index.js";
 import { CustomRuleDetector } from "./detectors/custom-rule.js";
 import { BolaDetector, extractPathId, extractJwtSub } from "./detectors/bola.js";
 import { EndpointObserver } from "./api-discovery/endpoint-observer.js";
@@ -338,21 +338,6 @@ export class RaspAgent {
   }
 
   /**
-   * Run every detector against a normalised request.
-   *
-   * Detectors run in registration order; the first one returning a non-null
-   * result wins. Detector exceptions are swallowed so that a bug in one
-   * detector cannot take down the host application.
-   *
-   * @param req - Framework-agnostic request view.
-   * @returns The first {@link DetectionResult} found, or `null` when the
-   *   request is clean (or when the kill switch is active).
-   *
-   * @remarks Side-effects (redaction, audit log, buffering) happen in the
-   *   background via {@link handleDetection}; this method itself returns
-   *   synchronously.
-   */
-  /**
    * Record the response-phase outcome of a request for API-discovery traffic
    * profiling (status code, latency, confirmed auth middleware execution).
    * Called by the framework integration's response hook. Never throws.
@@ -366,26 +351,48 @@ export class RaspAgent {
     }
   }
 
+  /**
+   * Run every detector against a normalised request.
+   *
+   * Collects all matches across the detector chain (and all custom rules when
+   * a detector implements {@link Detector.detectAll}). The primary result is
+   * the highest-severity match; ties keep detector/rule registration order.
+   * Detector exceptions are swallowed so that a bug in one detector cannot
+   * take down the host application.
+   *
+   * @param req - Framework-agnostic request view.
+   * @returns The primary {@link DetectionResult}, or `null` when the request
+   *   is clean (or when the kill switch is active).
+   *
+   * @remarks Side-effects (redaction, audit log, buffering) happen in the
+   *   background via {@link handleDetection}; this method itself returns
+   *   synchronously.
+   */
   inspect(req: NormalizedRequest): DetectionResult | null {
     if (this.killed) return null;
 
     // Observe passively before running detectors - fail open
     this.observer.observe(req);
 
+    const matches: DetectionResult[] = [];
     for (const detector of this.detectors) {
-      let result: DetectionResult | null = null;
       try {
-        result = detector.detect(req);
+        if (typeof detector.detectAll === "function") {
+          matches.push(...detector.detectAll(req));
+        } else {
+          const result = detector.detect(req);
+          if (result) matches.push(result);
+        }
       } catch {
         continue;
       }
-
-      if (result) {
-        this.handleDetection(result, req).catch(() => {});
-        return result;
-      }
     }
-    return null;
+
+    const primary = pickPrimaryDetection(matches);
+    if (!primary) return null;
+
+    this.handleDetection(primary, req, matches).catch(() => {});
+    return primary;
   }
 
   /**
@@ -400,8 +407,16 @@ export class RaspAgent {
    */
   private async handleDetection(
     detection: DetectionResult,
-    req: NormalizedRequest
+    req: NormalizedRequest,
+    allMatches: DetectionResult[] = [detection]
   ): Promise<void> {
+    const matchedRules = allMatches.map((m) => ({
+      id: m.detectorName,
+      eventType: m.eventType,
+      severity: m.severity,
+      location: m.location,
+    }));
+
     const raw: Omit<EventPayload, "metadata"> & { metadata: Record<string, unknown> } = {
       projectId: this.cfg.projectId,
       agentId: this.cfg.agentId,
@@ -418,6 +433,7 @@ export class RaspAgent {
       metadata: {
         redacted: true,
         matchedRule: detection.detectorName,
+        matchedRules,
         detectorDescription: detection.description,
         location: detection.location,
         matchedValue: detection.matchedValue,

@@ -29,6 +29,8 @@ Responsibilities:
 - Provide Express, Fastify, and NestJS integrations.
 - Keep detectors isolated and testable.
 - Keep transport logic separate from detection logic.
+- On a single request, collect **all** detector/rule matches; emit one event with
+  primary = highest severity (`matchedRule`) and full list in `matchedRules`.
 
 ## Local Redaction Audit Log
 

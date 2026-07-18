@@ -12,7 +12,7 @@
  *    but a thrown error short-circuits the detector for the request and is a
  *    silent loss of coverage.
  */
-import type { DetectionResult, NormalizedRequest } from "../types.js";
+import type { DetectionResult, NormalizedRequest, Severity } from "../types.js";
 
 /**
  * Implementation contract for a single detector.
@@ -27,6 +27,41 @@ export interface Detector {
    *   request looks clean to this detector.
    */
   detect(req: NormalizedRequest): DetectionResult | null;
+  /**
+   * Optional: return every match for this detector (e.g. all custom rules).
+   * When absent, {@link RaspAgent.inspect} falls back to {@link detect}.
+   */
+  detectAll?(req: NormalizedRequest): DetectionResult[];
+}
+
+/** Higher rank = more severe. Used to pick the primary detection. */
+const SEVERITY_RANK: Record<Severity, number> = {
+  critical: 4,
+  high: 3,
+  medium: 2,
+  low: 1,
+};
+
+export function severityRank(severity: Severity): number {
+  return SEVERITY_RANK[severity] ?? 0;
+}
+
+/**
+ * Pick the highest-severity detection. On a tie, keep the first in array order
+ * (detector registration order / rule order).
+ */
+export function pickPrimaryDetection(
+  results: DetectionResult[]
+): DetectionResult | null {
+  if (results.length === 0) return null;
+  let primary = results[0]!;
+  for (let i = 1; i < results.length; i++) {
+    const candidate = results[i]!;
+    if (severityRank(candidate.severity) > severityRank(primary.severity)) {
+      primary = candidate;
+    }
+  }
+  return primary;
 }
 
 /**

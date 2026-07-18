@@ -8,9 +8,12 @@
  *
  * Safety: rule compilation and matching are wrapped so a malformed pattern can
  * never crash the request hot path - a bad rule is simply skipped.
+ *
+ * Multi-match: {@link detectAll} returns every matching rule; {@link detect}
+ * returns the highest-severity match (severity wins over rule order).
  */
 import type { Detector } from "./base.js";
-import { flattenValues } from "./base.js";
+import { flattenValues, pickPrimaryDetection } from "./base.js";
 import type { DetectionResult, NormalizedRequest } from "../types.js";
 import type { CustomRuleSpec } from "../policy/types.js";
 
@@ -62,23 +65,39 @@ export class CustomRuleDetector implements Detector {
     }
   }
 
-  detect(req: NormalizedRequest): DetectionResult | null {
-    for (const { spec, regex } of this.rules) {
-      const values = this.valuesFor(req, spec.target ?? "any");
-      for (const val of values) {
-        if (typeof val !== "string") continue;
-        if (regex.test(val)) {
-          return {
-            detectorName: spec.id,
-            eventType: spec.eventType ?? "custom_rule",
-            severity: spec.severity ?? "medium",
-            description: spec.description ?? spec.name ?? `Custom rule ${spec.id} matched`,
-            matchedValue: val.slice(0, 200),
-            location: spec.target ?? "any",
-          };
-        }
+  private matchRule(
+    { spec, regex }: CompiledRule,
+    req: NormalizedRequest
+  ): DetectionResult | null {
+    const values = this.valuesFor(req, spec.target ?? "any");
+    for (const val of values) {
+      if (typeof val !== "string") continue;
+      if (regex.test(val)) {
+        return {
+          detectorName: spec.id,
+          eventType: spec.eventType ?? "custom_rule",
+          severity: spec.severity ?? "medium",
+          description: spec.description ?? spec.name ?? `Custom rule ${spec.id} matched`,
+          matchedValue: val.slice(0, 200),
+          location: spec.target ?? "any",
+        };
       }
     }
     return null;
+  }
+
+  /** Every custom rule that matches this request (policy array order). */
+  detectAll(req: NormalizedRequest): DetectionResult[] {
+    const matches: DetectionResult[] = [];
+    for (const rule of this.rules) {
+      const hit = this.matchRule(rule, req);
+      if (hit) matches.push(hit);
+    }
+    return matches;
+  }
+
+  /** Highest-severity match, or null when nothing matches. */
+  detect(req: NormalizedRequest): DetectionResult | null {
+    return pickPrimaryDetection(this.detectAll(req));
   }
 }

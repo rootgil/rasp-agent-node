@@ -9,7 +9,7 @@
  * kept and exported so callers can pass them via {@link RaspConfig.extraDetectors}
  * as an offline fallback, but they are no longer activated by default.
  */
-export { type Detector } from "./base.js";
+export { type Detector, severityRank, pickPrimaryDetection } from "./base.js";
 
 // Named re-exports so callers can compose their own detector chains.
 export { SqlInjectionDetector } from "./sql-injection.js";

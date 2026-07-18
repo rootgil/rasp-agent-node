@@ -390,8 +390,9 @@ Host application
 └── RASP middleware (Express / Fastify / NestJS)
     ├── inspect(req)
     │   ├── EndpointObserver.observe()   ← passive API discovery
-    │   ├── Detectors[0..N].detect()     ← first-match, sync
-    │   └── handleDetection() [async]
+    │   ├── Detectors[0..N]              ← collect ALL matches (detectAll / detect)
+    │   ├── pickPrimaryDetection()       ← highest severity wins (tie → first)
+    │   └── handleDetection() [async]    ← one event; metadata.matchedRules[]
     │       ├── RedactionEngine.redact() ← fail-closed on error
     │       ├── AuditLog.write()         ← local JSONL, never sent
     │       └── EventBuffer.enqueue()    ← batch flush → collector
@@ -405,6 +406,16 @@ Heartbeat   → POST /v1/heartbeat (kill-switch, policy version, upgrade)
 Discovery   → POST /v1/discovery (batched, 60s)
 ```
 
+### Multi-match / severity wins
+
+When several detectors or custom rules match the same request:
+
+1. The agent **collects every match** (custom rules via `CustomRuleDetector.detectAll`).
+2. It emits **one** telemetry event (avoids alert spam).
+3. Top-level `eventType` / `severity` and `metadata.matchedRule` are the **highest-severity** match (`critical` > `high` > `medium` > `low`). Equal severity keeps registration order.
+4. `metadata.matchedRules` lists all matches as `{ id, eventType, severity, location }` so the dashboard can show every rule that fired.
+
+A medium rule (e.g. brute-force) registered before a high rule (e.g. NoSQL injection) no longer hides the high detection.
 ---
 
 ## Testing

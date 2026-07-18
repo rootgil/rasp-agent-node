@@ -49,6 +49,8 @@ The web UI keeps the **original banking presets** (normal, attack, data privacy)
 
 **Rules flow:** toggle rules ON in the dashboard, then click **Publish now** on the Rules page. The agent picks up the signed policy on the next heartbeat (~30s).
 
+**Multi-match:** if several rules match the same request, the agent reports **one** event with the **highest severity** as primary (`matchedRule`), and lists every match in `metadata.matchedRules` (visible on the event detail page).
+
 ## Endpoints
 
 | Method | Path | Vulnerable to |

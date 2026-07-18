@@ -37,6 +37,8 @@ export type { Detector } from "./detectors/index.js";
 export {
   createDefaultDetectors,
   createOfflineDetectors,
+  severityRank,
+  pickPrimaryDetection,
 } from "./detectors/index.js";
 export { CustomRuleDetector } from "./detectors/custom-rule.js";
 export {

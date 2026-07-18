@@ -189,7 +189,18 @@ export interface EventPayload {
    */
   metadata: {
     redacted: true;
+    /** Highest-severity rule/detector id for this request. */
     matchedRule?: string;
+    /**
+     * All rules/detectors that matched the same request (severity-ordered
+     * primary is still `matchedRule` / top-level `eventType`/`severity`).
+     */
+    matchedRules?: Array<{
+      id: string;
+      eventType: string;
+      severity: Severity;
+      location?: string;
+    }>;
     auditLoggedLocally?: boolean;
     [key: string]: unknown;
   };
