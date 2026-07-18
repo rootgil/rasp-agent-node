@@ -33,6 +33,9 @@ pnpm install
 pnpm dev
 ```
 
+This example is a **standalone pnpm project** (own `pnpm-lock.yaml` / `node_modules`).
+Installing here does not modify the `agent-node` root lockfile.
+
 The startup banner reports the active mode, channel, HMAC signing, self-protect
 and the applied policy version so you can confirm what is enabled.
 

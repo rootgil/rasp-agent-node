@@ -10,7 +10,7 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@queno/agent-node": "^0.4.2",
+    "@queno/agent-node": "^0.5.0",
     "dotenv": "^16.5.0",
     "express": "^4.21.2"
   },

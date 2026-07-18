@@ -1,0 +1,9 @@
+# Standalone example — not part of the agent-node workspace.
+packages:
+  - '.'
+
+allowBuilds:
+  esbuild: true
+
+minimumReleaseAgeExclude:
+  - '@queno/agent-node'
