@@ -68,7 +68,9 @@ describe("CustomRuleDetector", () => {
     const det = new CustomRuleDetector([{ id: "r1", pattern: "secret", target: "headers" }]);
     // Present in query, not headers → no match because target is headers.
     expect(det.detect(req({ query: { x: "secret" } }))).toBeNull();
-    expect(det.detect(req({ headers: { "x-test": "secret" } }))).not.toBeNull();
+    // Header rules match names only (never values — Authorization/Cookie stay out of scope).
+    expect(det.detect(req({ headers: { "x-test": "secret" } }))).toBeNull();
+    expect(det.detect(req({ headers: { "x-secret-probe": "1" } }))).not.toBeNull();
   });
 
   it("detectAll returns every matching rule; detect picks highest severity", () => {
