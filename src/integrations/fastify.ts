@@ -32,7 +32,8 @@ function normalize(request: FastifyRequest): NormalizedRequest {
 
 export function createFastifyPlugin(agent: RaspAgent) {
   const raspPlugin = async function raspPlugin(fastify: FastifyInstance): Promise<void> {
-    // Early hook: bind request context + inspect query/headers (body often empty).
+    // Early hook: bind request context. Inspect immediately only when no body
+    // is expected — body-bearing methods are inspected once in preHandler.
     fastify.addHook(
       "onRequest",
       async (request: FastifyRequest, reply: FastifyReply): Promise<void> => {
@@ -40,6 +41,9 @@ export function createFastifyPlugin(agent: RaspAgent) {
           const normalized = normalize(request);
           const ctx = agent.beginRequest(normalized);
           (request as RaspRequest).__raspCtx = ctx;
+
+          const method = request.method.toUpperCase();
+          if (["POST", "PUT", "PATCH", "DELETE"].includes(method)) return;
 
           const detection = agent.inspect(normalized);
           if (detection && agent.mode === "block") {

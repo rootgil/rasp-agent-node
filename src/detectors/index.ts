@@ -54,15 +54,11 @@ export function createOfflineDetectors(): Detector[] {
 }
 
 /**
- * Returns an empty detector chain.
+ * Default detector chain for new installs.
  *
- * All detection is now driven by the signed policy distributed by the control
- * plane. The agent receives detection rules via its heartbeat, compiles them
- * into a {@link CustomRuleDetector}, and rebuilds its chain without a restart.
- *
- * Passing built-in detectors via {@link RaspConfig.extraDetectors} still works
- * as an explicit offline fallback.
+ * Ships the offline built-ins so agents protect before a signed policy arrives.
+ * Signed policies still append {@link CustomRuleDetector} via applyPolicy.
  */
-export function createDefaultDetectors() {
-  return [];
+export function createDefaultDetectors(): Detector[] {
+  return createOfflineDetectors();
 }

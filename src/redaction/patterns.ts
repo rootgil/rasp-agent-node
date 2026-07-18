@@ -46,6 +46,8 @@ export const DEFAULT_REDACTION_PATTERNS: RedactionPattern[] = [
   { name: "x-api-key", matchKey: /^x-api-key$/i },
   { name: "x-auth-token", matchKey: /^x-auth-token$/i },
   { name: "x-access-token", matchKey: /^x-access-token$/i },
+  // Detector match snippets must never leave the process as raw text.
+  { name: "matched-value", matchKey: /^matchedValue$/i },
 ];
 
 /** IP handling for value redaction. */
@@ -68,8 +70,43 @@ function luhnValid(digits: string): boolean {
   return sum % 10 === 0;
 }
 
-function sha256Short(input: string): string {
+export function sha256Short(input: string): string {
   return createHash("sha256").update(input).digest("hex").slice(0, 16);
+}
+
+/** Classify a detector match for telemetry without shipping the raw value. */
+export type MatchedValueKind =
+  | "bearer"
+  | "jwt"
+  | "api_key"
+  | "basic_auth"
+  | "password_like"
+  | "header"
+  | "other";
+
+export function classifyMatchedValue(input: string): MatchedValueKind {
+  const s = input.trim();
+  if (/^bearer\s+/i.test(s)) return "bearer";
+  if (/^basic\s+/i.test(s)) return "basic_auth";
+  if (/^eyJ[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+/.test(s)) return "jwt";
+  if (/\b(sk_live_|sk_test_|rk_live_|rk_test_)[A-Za-z0-9]+/.test(s)) return "api_key";
+  if (/password|passwd|secret/i.test(s) && s.length < 200) return "password_like";
+  return "other";
+}
+
+/**
+ * Safe telemetry fields derived from a detector match. Never includes the raw
+ * match string (AGENTS.md: no raw tokens / Authorization / passwords).
+ */
+export function fingerprintMatch(input: string | undefined): {
+  matchedValueFingerprint?: string;
+  matchedValueKind?: MatchedValueKind;
+} {
+  if (!input) return {};
+  return {
+    matchedValueFingerprint: sha256Short(input),
+    matchedValueKind: classifyMatchedValue(input),
+  };
 }
 
 // --- Value detectors, applied in priority order. ---
@@ -107,13 +144,41 @@ function scrubSql(input: string): string {
  *
  * @returns The possibly-transformed string and whether anything was redacted.
  */
+const BEARER_RE = /\bBearer\s+[A-Za-z0-9\-._~+/]+=*/gi;
+const BASIC_RE = /\bBasic\s+[A-Za-z0-9+/=]+/gi;
+const JWT_RE = /\beyJ[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]*/g;
+const STRIPE_KEY_RE = /\b(?:sk|rk)_(?:live|test)_[A-Za-z0-9]{16,}\b/g;
+
 export function redactValueString(
   input: string,
   ipMode: IpMode = "hash"
 ): { value: string; redacted: boolean } {
-  if (!input || input.length > 20_000) return { value: input, redacted: false };
-  let out = input;
-  let redacted = false;
+  // Oversized leaves still get a bounded secret scan on the prefix, then drop rest.
+  if (!input) return { value: input, redacted: false };
+  const bounded = input.length > 20_000 ? input.slice(0, 20_000) : input;
+  let out = bounded;
+  let redacted = input.length > 20_000;
+  if (input.length > 20_000) {
+    out = `${bounded}[TRUNCATED]`;
+  }
+
+  // Auth / API secrets before other patterns.
+  out = out.replace(BEARER_RE, () => {
+    redacted = true;
+    return "Bearer [REDACTED]";
+  });
+  out = out.replace(BASIC_RE, () => {
+    redacted = true;
+    return "Basic [REDACTED]";
+  });
+  out = out.replace(JWT_RE, () => {
+    redacted = true;
+    return "[JWT REDACTED]";
+  });
+  out = out.replace(STRIPE_KEY_RE, () => {
+    redacted = true;
+    return "[API_KEY REDACTED]";
+  });
 
   // SQL scrubbing first so literals (incl. emails/cards inside quotes) collapse.
   if (SQL_HINT_RE.test(out)) {

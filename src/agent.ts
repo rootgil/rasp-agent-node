@@ -26,6 +26,7 @@ import type {
 } from "./types.js";
 import { RedactionEngine } from "./redaction/engine.js";
 import { AuditLog } from "./redaction/audit-log.js";
+import { fingerprintMatch } from "./redaction/patterns.js";
 import { TransportClient } from "./transport/client.js";
 import { EventBuffer } from "./transport/buffer.js";
 import { HeartbeatScheduler } from "./transport/heartbeat.js";
@@ -51,7 +52,9 @@ export class RaspAgent {
   /** Fully validated configuration with defaults applied. */
   readonly cfg: ValidatedRaspConfig;
   private redaction: RedactionEngine;
-  private readonly auditLog: AuditLog | null;
+  private readonly auditLog: AuditLog;
+  /** When false, skip non-drop audit lines (cfg.auditLog === false). */
+  private readonly auditSuccessWrites: boolean;
   private readonly client: TransportClient;
   private readonly buffer: EventBuffer;
   private readonly heartbeat: HeartbeatScheduler;
@@ -108,9 +111,10 @@ export class RaspAgent {
 
     this.redaction = new RedactionEngine();
 
-    this.auditLog = this.cfg.auditLog
-      ? new AuditLog(this.cfg.auditLogPath, this.cfg.auditLogMaxBytes)
-      : null;
+    // Always keep an audit sink for redaction *drops* (AGENTS.md). Full success
+    // lines still respect cfg.auditLog via auditSuccessWrites.
+    this.auditLog = new AuditLog(this.cfg.auditLogPath, this.cfg.auditLogMaxBytes);
+    this.auditSuccessWrites = this.cfg.auditLog;
 
     this.client = new TransportClient({
       collectorUrl: COLLECTOR_URL,
@@ -119,6 +123,12 @@ export class RaspAgent {
       hmacSecret: this.cfg.hmacSecret,
       tls: this.cfg.tls,
     });
+
+    // Secrets live in SecureStore inside TransportClient — clear from cfg.
+    (this.cfg as { apiKey: string }).apiKey = "";
+    if (this.cfg.hmacSecret !== undefined) {
+      (this.cfg as { hmacSecret?: string }).hmacSecret = undefined;
+    }
 
     this.buffer = new EventBuffer(this.client, {
       flushIntervalMs: this.cfg.flushIntervalMs,
@@ -158,6 +168,13 @@ export class RaspAgent {
       projectId: this.cfg.projectId,
       agentId: this.cfg.agentId,
       flushIntervalMs: this.cfg.discoveryFlushIntervalMs,
+      sanitize: (payload) => {
+        try {
+          return this.redaction.redact(payload).redacted;
+        } catch {
+          return null;
+        }
+      },
     });
 
     // Verify binary integrity against the release manifest (Addendum E.7).
@@ -334,7 +351,7 @@ export class RaspAgent {
     }
     await this.buffer.stop();
     await this.discoveryBuffer.stop();
-    this.auditLog?.close();
+    this.auditLog.close();
   }
 
   /**
@@ -431,12 +448,14 @@ export class RaspAgent {
       sourceIp: req.sourceIp,
       timestamp: new Date().toISOString(),
       metadata: {
-        redacted: true,
+        // Set true only after successful redaction below.
+        redacted: false,
         matchedRule: detection.detectorName,
         matchedRules,
         detectorDescription: detection.description,
         location: detection.location,
-        matchedValue: detection.matchedValue,
+        // Never send raw matchedValue (tokens / Authorization / passwords).
+        ...fingerprintMatch(detection.matchedValue),
       },
     };
 
@@ -448,7 +467,7 @@ export class RaspAgent {
       redacted = result.redacted;
       redactedFields = result.redactedFields;
     } catch (err) {
-      this.auditLog?.write({
+      this.auditLog.write({
         ts: new Date().toISOString(),
         agentId: this.cfg.agentId,
         projectId: this.cfg.projectId,
@@ -460,21 +479,23 @@ export class RaspAgent {
       return;
     }
 
-    const auditLoggedLocally = redactedFields.length > 0;
-
-    this.auditLog?.write({
-      ts: new Date().toISOString(),
-      agentId: this.cfg.agentId,
-      projectId: this.cfg.projectId,
-      eventType: detection.eventType,
-      severity: detection.severity,
-      detectorName: detection.detectorName,
-      redactedFields,
-      dropped: false,
-    });
-
     const event = redacted as EventPayload;
+    (event.metadata as Record<string, unknown>)["redacted"] = true;
+    const auditLoggedLocally = this.auditSuccessWrites;
     (event.metadata as Record<string, unknown>)["auditLoggedLocally"] = auditLoggedLocally;
+
+    if (this.auditSuccessWrites) {
+      this.auditLog.write({
+        ts: new Date().toISOString(),
+        agentId: this.cfg.agentId,
+        projectId: this.cfg.projectId,
+        eventType: detection.eventType,
+        severity: detection.severity,
+        detectorName: detection.detectorName,
+        redactedFields,
+        dropped: false,
+      });
+    }
 
     const forSend = this.applyDataResidency(event);
     if (forSend) {

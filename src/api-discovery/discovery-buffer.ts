@@ -13,6 +13,8 @@ export interface DiscoveryBufferOptions {
   projectId: string;
   agentId: string;
   flushIntervalMs: number;
+  /** Optional redaction/sanitizer; return null to drop the batch. */
+  sanitize?: (payload: unknown) => unknown | null;
 }
 
 const MAX_BATCH_SIZE = 500;
@@ -22,6 +24,7 @@ export class DiscoveryBuffer {
   private readonly observer: EndpointObserver;
   private readonly projectId: string;
   private readonly agentId: string;
+  private readonly sanitize?: (payload: unknown) => unknown | null;
   private timer: ReturnType<typeof setInterval> | null = null;
 
   constructor(
@@ -33,6 +36,7 @@ export class DiscoveryBuffer {
     this.observer = observer;
     this.projectId = opts.projectId;
     this.agentId = opts.agentId;
+    this.sanitize = opts.sanitize;
 
     this.timer = setInterval(() => {
       this.flush().catch(() => {});
@@ -61,12 +65,22 @@ export class DiscoveryBuffer {
     for (let i = 0; i < entries.length; i += MAX_BATCH_SIZE) {
       const chunk = entries.slice(i, i + MAX_BATCH_SIZE);
       try {
-        await this.client.sendDiscovery({
+        const payload = {
           projectId: this.projectId,
           agentId: this.agentId,
           timestamp,
           endpoints: chunk,
-        });
+        };
+        const toSend = this.sanitize ? this.sanitize(payload) : payload;
+        if (!toSend) continue;
+        await this.client.sendDiscovery(
+          toSend as {
+            projectId: string;
+            agentId: string;
+            timestamp: string;
+            endpoints: typeof chunk;
+          }
+        );
       } catch {
         // Fail open
       }

@@ -41,11 +41,13 @@ export const COLLECTOR_URL =
  */
 export const DEFAULT_POLICY_PUBLIC_KEY =
   process.env.RASP_POLICY_PUBLIC_KEY ??
-  [
-    "-----BEGIN PUBLIC KEY-----",
-    "MCowBQYDK2VwAyEAI/7DX+UlM7pdHvIPZXGBtr7WvYKi3ZnRY7QtOhiFufM=",
-    "-----END PUBLIC KEY-----",
-  ].join("\n");
+  (process.env.NODE_ENV === "production"
+    ? ""
+    : [
+        "-----BEGIN PUBLIC KEY-----",
+        "MCowBQYDK2VwAyEAI/7DX+UlM7pdHvIPZXGBtr7WvYKi3ZnRY7QtOhiFufM=",
+        "-----END PUBLIC KEY-----",
+      ].join("\n"));
 
 /**
  * Zod schema mirroring {@link RaspConfig}.
@@ -71,6 +73,7 @@ const RaspConfigSchema = z.object({
   framework: z.string().optional(),
   runtime: z.string().default("node"),
   discoveryFlushIntervalMs: z.number().int().min(5_000).default(60_000),
+  // Empty string in production when unset — PolicyManager treats as no trust anchor.
   policyPublicKey: z.string().default(DEFAULT_POLICY_PUBLIC_KEY),
   hmacSecret: z.string().optional(),
   instrumentDb: z.boolean().default(false),

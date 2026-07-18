@@ -44,4 +44,12 @@ describe("redactValueString", () => {
     expect(value).toContain("[INT]");
     expect(value).toContain("[STRING]");
   });
+
+  it("scrubs Bearer and JWT shapes", () => {
+    const { value, redacted } = redactValueString(
+      "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.aaa.bbb"
+    );
+    expect(redacted).toBe(true);
+    expect(value).toContain("Bearer [REDACTED]");
+  });
 });

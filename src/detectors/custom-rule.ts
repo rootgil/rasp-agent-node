@@ -31,6 +31,8 @@ export class CustomRuleDetector implements Detector {
     for (const spec of specs) {
       if (spec.enabled === false) continue;
       if (!spec.pattern) continue;
+      if (spec.pattern.length > 200) continue;
+      if (/(\+|\*)\{|\(.*\+.*\)[+*]|\(.*\*.*\)[+*]/.test(spec.pattern)) continue;
       try {
         this.rules.push({ spec, regex: new RegExp(spec.pattern, "i") });
       } catch {
@@ -53,14 +55,15 @@ export class CustomRuleDetector implements Detector {
       case "body":
         return flattenValues(req.body);
       case "headers":
-        return flattenValues(req.headers);
+        // Header *names* only — never match/exfiltrate Authorization/Cookie values.
+        return Object.keys(req.headers);
       case "any":
       default:
         return [
           req.path,
           ...flattenValues(req.query),
           ...flattenValues(req.body),
-          ...flattenValues(req.headers),
+          ...Object.keys(req.headers),
         ];
     }
   }
@@ -78,7 +81,9 @@ export class CustomRuleDetector implements Detector {
           eventType: spec.eventType ?? "custom_rule",
           severity: spec.severity ?? "medium",
           description: spec.description ?? spec.name ?? `Custom rule ${spec.id} matched`,
-          matchedValue: val.slice(0, 200),
+          // Fingerprinted in handleDetection; keep a short non-secret snippet for path/query only.
+          matchedValue:
+            spec.target === "headers" ? undefined : val.slice(0, 200),
           location: spec.target ?? "any",
         };
       }

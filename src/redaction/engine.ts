@@ -53,6 +53,8 @@ const STRUCTURAL_KEYS = new Set([
   "redacted",
   "matchedRule",
   "matchedRules",
+  "matchedValueFingerprint",
+  "matchedValueKind",
   "auditLoggedLocally",
 ]);
 
@@ -111,11 +113,12 @@ export class RedactionEngine {
     // approved keys, masking every value.
     const mode = cfg.mode === "allowlist" ? "allowlist" : "denylist";
 
+    // Built-in value redaction cannot be disabled by policy (security floor).
     return new RedactionEngine({
       mode,
       keyPatterns: customKey,
       allowKeyPatterns: allowKey,
-      valueRedaction: cfg.valueRedaction ?? true,
+      valueRedaction: true,
       ipMode: cfg.ipMode ?? "hash",
     });
   }
@@ -197,7 +200,13 @@ export class RedactionEngine {
   }
 }
 
+const MAX_REGEX_SOURCE_LEN = 200;
+/** Rough guard against nested quantifiers that often imply catastrophic backtracking. */
+const UNSAFE_REGEX_HINT = /(\+|\*)\{|\(.*\+.*\)[+*]|\(.*\*.*\)[+*]/;
+
 function safeRegex(src: string): RegExp | null {
+  if (!src || src.length > MAX_REGEX_SOURCE_LEN) return null;
+  if (UNSAFE_REGEX_HINT.test(src)) return null;
   try {
     return new RegExp(src, "i");
   } catch {

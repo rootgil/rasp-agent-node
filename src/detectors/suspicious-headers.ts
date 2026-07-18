@@ -66,7 +66,6 @@ export class SuspiciousHeadersDetector implements Detector {
           eventType: "host_header_injection",
           severity: "medium",
           description: "Suspicious characters in Host header",
-          matchedValue: v.slice(0, 200),
           location: "header:host",
         };
       }
@@ -80,7 +79,6 @@ export class SuspiciousHeadersDetector implements Detector {
               eventType: "suspicious_headers",
               severity: "medium",
               description: "Private IP injected in X-Forwarded-For header",
-              matchedValue: ip,
               location: "header:x-forwarded-for",
             };
           }
@@ -93,7 +91,7 @@ export class SuspiciousHeadersDetector implements Detector {
           eventType: "header_injection",
           severity: "high",
           description: `Newline injection detected in header '${name}'`,
-          matchedValue: v.slice(0, 200),
+          // Never attach raw header values (may contain Authorization / Cookie).
           location: `header:${name}`,
         };
       }
