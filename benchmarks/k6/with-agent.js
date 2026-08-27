@@ -43,8 +43,11 @@ export function handleSummary(data) {
   if (typeof p99 !== "number") {
     throw new Error("handleSummary: p(99) not found in http_req_duration metrics");
   }
+  const quiet = __ENV.CI_QUIET === "1";
   return {
     "benchmarks/output/with-agent.json": JSON.stringify({ p99 }, null, 2),
-    stdout: textSummary(data, { indent: " ", enableColors: true }),
+    stdout: quiet
+      ? `with-agent p99=${p99.toFixed(2)}ms\n`
+      : textSummary(data, { indent: " ", enableColors: true }),
   };
 }
